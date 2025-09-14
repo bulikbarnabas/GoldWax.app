@@ -41,8 +41,6 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   useEffect(() => {
     // Felhasználók listája és mentett bejelentkezés betöltése
     const initAuth = async () => {
-      // Clear old auth data to reset login system
-      await AsyncStorage.removeItem(STORAGE_KEY);
       await loadUsers();
       await loadAuthState();
     };
