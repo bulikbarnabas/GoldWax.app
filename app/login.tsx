@@ -72,6 +72,12 @@ export default function LoginScreen() {
           </LinearGradient>
 
           <View style={styles.form}>
+            <View style={styles.credentialsInfo}>
+              <Text style={styles.credentialsTitle}>Teszt bejelentkezési adatok:</Text>
+              <Text style={styles.credentialsText}>Admin: admin@goldwax.hu / admin123</Text>
+              <Text style={styles.credentialsText}>Dolgozó: dolgozo1@goldwax.hu / dolgozo123</Text>
+            </View>
+            
             {errorMessage ? (
               <View style={styles.errorContainer}>
                 <Text style={styles.errorText}>{errorMessage}</Text>
@@ -242,5 +248,26 @@ const styles = StyleSheet.create({
     color: '#c62828',
     fontSize: 14,
     textAlign: 'center',
+  },
+  credentialsInfo: {
+    backgroundColor: Colors.gold.light,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: Colors.gold.main,
+  },
+  credentialsTitle: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: Colors.text,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  credentialsText: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 2,
   },
 });

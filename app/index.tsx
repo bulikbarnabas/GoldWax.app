@@ -24,22 +24,29 @@ export default function WelcomeScreen() {
   useEffect(() => {
     if (!authLoading) {
       if (isAuthenticated && user) {
-        if (user.role === 'admin') {
-          router.replace('/admin');
-        } else {
+        // Csak dolgozók menjenek a szolgáltatások oldalra
+        if (user.role === 'employee') {
           router.replace('/(tabs)/services');
         }
+        // Admin felhasználók maradnak a főoldalon vagy manuálisan navigálnak
       }
     }
   }, [isAuthenticated, user, router, authLoading]);
 
   const handleEnter = () => {
     setLoading(true);
-    // Ha nincs bejelentkezve, menjen a login oldalra
     setTimeout(() => {
       if (!isAuthenticated) {
         router.push('/login');
+      } else {
+        // Ha be van jelentkezve, menjen a megfelelő oldalra
+        if (user?.role === 'admin') {
+          router.push('/admin');
+        } else {
+          router.push('/(tabs)/services');
+        }
       }
+      setLoading(false);
     }, 500);
   };
 
