@@ -18,29 +18,39 @@ import { useAuth } from '@/hooks/use-auth';
 
 export default function WelcomeScreen() {
   const router = useRouter();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (isAuthenticated && user) {
-      if (user.role === 'admin') {
-        router.replace('/admin');
-      } else {
-        router.replace('/(tabs)/services');
+    if (!authLoading) {
+      if (isAuthenticated && user) {
+        if (user.role === 'admin') {
+          router.replace('/admin');
+        } else {
+          router.replace('/(tabs)/services');
+        }
       }
     }
-  }, [isAuthenticated, user, router]);
+  }, [isAuthenticated, user, router, authLoading]);
 
   const handleEnter = () => {
     setLoading(true);
     // Ha nincs bejelentkezve, menjen a login oldalra
     setTimeout(() => {
-      router.push('/login');
+      if (!isAuthenticated) {
+        router.push('/login');
+      }
     }, 500);
   };
 
   return (
     <SafeAreaView style={styles.container}>
+      {authLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={styles.loadingText}>Betöltés...</Text>
+        </View>
+      ) : (
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
       <LinearGradient
         colors={[Colors.gold.light, Colors.background]}
@@ -152,6 +162,7 @@ export default function WelcomeScreen() {
         </View>
       </View>
       </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
@@ -336,6 +347,16 @@ const styles = StyleSheet.create({
   socialIcon: {
     fontSize: 20,
     color: Colors.primary,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: Colors.textSecondary,
   },
 });
 

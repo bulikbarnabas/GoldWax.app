@@ -13,18 +13,18 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/hooks/use-auth';
 import { User } from '@/types/salon';
-import { UserPlus, Edit2, Trash2, X, Check, Settings, Users, Wrench } from 'lucide-react-native';
+import { UserPlus, Edit2, Trash2, X, Check, Settings, Users, Wrench, LogOut } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 
 export default function AdminScreen() {
-  const { user, users, addUser, updateUser, deleteUser } = useAuth();
+  const { user, users, addUser, updateUser, deleteUser, logout } = useAuth();
   const router = useRouter();
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    pin: '',
+    password: '',
     role: 'employee' as 'admin' | 'employee'
   });
   const [isLoading, setIsLoading] = useState(false);
@@ -43,13 +43,13 @@ export default function AdminScreen() {
   }
 
   const handleAddUser = async () => {
-    if (!formData.name || !formData.email || !formData.pin) {
+    if (!formData.name || !formData.email || !formData.password) {
       Alert.alert('Hiba', 'Minden mező kitöltése kötelező!');
       return;
     }
 
-    if (formData.pin.length !== 4) {
-      Alert.alert('Hiba', 'A PIN kód 4 számjegyű kell legyen!');
+    if (formData.password.length < 6) {
+      Alert.alert('Hiba', 'A jelszó legalább 6 karakter hosszú kell legyen!');
       return;
     }
 
@@ -58,7 +58,7 @@ export default function AdminScreen() {
       id: `user-${Date.now()}`,
       name: formData.name,
       email: formData.email,
-      pin: formData.pin,
+      password: formData.password,
       role: formData.role
     };
 
@@ -77,13 +77,13 @@ export default function AdminScreen() {
   const handleUpdateUser = async () => {
     if (!editingUser) return;
 
-    if (!formData.name || !formData.email || !formData.pin) {
+    if (!formData.name || !formData.email || !formData.password) {
       Alert.alert('Hiba', 'Minden mező kitöltése kötelező!');
       return;
     }
 
-    if (formData.pin.length !== 4) {
-      Alert.alert('Hiba', 'A PIN kód 4 számjegyű kell legyen!');
+    if (formData.password.length < 6) {
+      Alert.alert('Hiba', 'A jelszó legalább 6 karakter hosszú kell legyen!');
       return;
     }
 
@@ -91,7 +91,7 @@ export default function AdminScreen() {
     const success = await updateUser(editingUser.id, {
       name: formData.name,
       email: formData.email,
-      pin: formData.pin,
+      password: formData.password,
       role: formData.role
     });
     setIsLoading(false);
@@ -131,7 +131,7 @@ export default function AdminScreen() {
     setFormData({
       name: '',
       email: '',
-      pin: '',
+      password: '',
       role: 'employee'
     });
   };
@@ -141,22 +141,48 @@ export default function AdminScreen() {
     setFormData({
       name: userToEdit.name,
       email: userToEdit.email,
-      pin: userToEdit.pin,
+      password: userToEdit.password,
       role: userToEdit.role
     });
+  };
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Kijelentkezés',
+      'Biztosan ki szeretne jelentkezni?',
+      [
+        { text: 'Mégse', style: 'cancel' },
+        {
+          text: 'Kijelentkezés',
+          style: 'destructive',
+          onPress: async () => {
+            await logout();
+            router.replace('/');
+          }
+        }
+      ]
+    );
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Admin Panel</Text>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => setShowAddModal(true)}
-        >
-          <UserPlus size={20} color="#fff" />
-          <Text style={styles.addButtonText}>Új felhasználó</Text>
-        </TouchableOpacity>
+        <View style={styles.headerButtons}>
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => setShowAddModal(true)}
+          >
+            <UserPlus size={20} color="#fff" />
+            <Text style={styles.addButtonText}>Új felhasználó</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.logoutButton}
+            onPress={handleLogout}
+          >
+            <LogOut size={20} color="#fff" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.adminMenu}>
@@ -266,11 +292,9 @@ export default function AdminScreen() {
 
             <TextInput
               style={styles.input}
-              placeholder="PIN kód (4 számjegy)"
-              value={formData.pin}
-              onChangeText={(text) => setFormData({ ...formData, pin: text })}
-              keyboardType="numeric"
-              maxLength={4}
+              placeholder="Jelszó (min. 6 karakter)"
+              value={formData.password}
+              onChangeText={(text) => setFormData({ ...formData, password: text })}
               secureTextEntry
               editable={!isLoading}
             />
@@ -344,6 +368,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    gap: 12,
   },
   title: {
     fontSize: 28,
@@ -574,5 +602,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600' as const,
     marginLeft: 8,
+  },
+  logoutButton: {
+    backgroundColor: '#ff4444',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

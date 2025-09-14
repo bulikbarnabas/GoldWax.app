@@ -36,12 +36,17 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     isAuthenticated: false
   });
   const [users, setUsers] = useState<User[]>(defaultUsers);
-  const [isLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     // Felhasználók listája és mentett bejelentkezés betöltése
-    loadUsers();
-    loadAuthState();
+    const initAuth = async () => {
+      // Clear old auth data to reset login system
+      await AsyncStorage.removeItem(STORAGE_KEY);
+      await loadUsers();
+      await loadAuthState();
+    };
+    initAuth();
   }, []);
 
   const loadAuthState = async () => {
@@ -53,6 +58,8 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       }
     } catch (error) {
       console.error('Error loading auth state:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
