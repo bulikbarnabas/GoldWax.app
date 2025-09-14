@@ -99,7 +99,7 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
-  pin: string;
+  password: string;
 }
 
 export interface AuthState {

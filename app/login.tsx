@@ -5,7 +5,6 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -20,43 +19,34 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
-  const [pin, setPin] = useState('');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const { login, user } = useAuth();
+  const { login } = useAuth();
+  const [errorMessage, setErrorMessage] = useState('');
 
   const handleLogin = async () => {
-    if (!email || !pin) {
-      Alert.alert('Hiba', 'Kérjük töltse ki az összes mezőt!');
+    setErrorMessage('');
+    
+    if (!email || !password) {
+      setErrorMessage('Kérjük töltse ki az összes mezőt!');
       return;
     }
 
     setIsLoading(true);
-    const success = await login(email, pin);
+    const success = await login(email, password);
     setIsLoading(false);
     
     if (success) {
-      // Kis késleltetés, hogy a context frissüljön
       setTimeout(() => {
         router.replace('/');
       }, 100);
     } else {
-      Alert.alert('Hiba', 'Hibás email vagy PIN kód!');
+      setErrorMessage('Hibás email vagy jelszó!');
     }
   };
 
-  const quickLogin = async (userEmail: string, userPin: string) => {
-    setIsLoading(true);
-    const success = await login(userEmail, userPin);
-    setIsLoading(false);
-    
-    if (success) {
-      // Kis késleltetés, hogy a context frissüljön
-      setTimeout(() => {
-        router.replace('/');
-      }, 100);
-    }
-  };
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -82,6 +72,11 @@ export default function LoginScreen() {
           </LinearGradient>
 
           <View style={styles.form}>
+            {errorMessage ? (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>{errorMessage}</Text>
+              </View>
+            ) : null}
             <View style={styles.inputContainer}>
               <User size={20} color="#666" style={styles.inputIcon} />
               <TextInput
@@ -99,12 +94,11 @@ export default function LoginScreen() {
               <Lock size={20} color="#666" style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
-                placeholder="PIN kód"
-                value={pin}
-                onChangeText={setPin}
-                keyboardType="numeric"
+                placeholder="Jelszó"
+                value={password}
+                onChangeText={setPassword}
                 secureTextEntry
-                maxLength={4}
+                autoCapitalize="none"
                 editable={!isLoading}
               />
             </View>
@@ -127,33 +121,22 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.quickAccess}>
-            <Text style={styles.quickAccessTitle}>Gyors belépés (fejlesztéshez)</Text>
-            
-            <TouchableOpacity
-              style={styles.quickButton}
-              onPress={() => quickLogin('admin@goldwax.hu', '1234')}
-              disabled={isLoading}
-            >
-              <Text style={styles.quickButtonText}>Admin (1234)</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.quickButton}
-              onPress={() => quickLogin('dolgozo1@goldwax.hu', '0000')}
-              disabled={isLoading}
-            >
-              <Text style={styles.quickButtonText}>Dolgozó 1 (0000)</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.quickButton}
-              onPress={() => quickLogin('dolgozo2@goldwax.hu', '1111')}
-              disabled={isLoading}
-            >
-              <Text style={styles.quickButtonText}>Dolgozó 2 (1111)</Text>
-            </TouchableOpacity>
+          <View style={styles.credentialsInfo}>
+            <Text style={styles.credentialsTitle}>Bejelentkezési adatok:</Text>
+            <View style={styles.credentialItem}>
+              <Text style={styles.credentialLabel}>Admin:</Text>
+              <Text style={styles.credentialValue}>admin@goldwax.hu / admin123</Text>
+            </View>
+            <View style={styles.credentialItem}>
+              <Text style={styles.credentialLabel}>Dolgozó 1:</Text>
+              <Text style={styles.credentialValue}>dolgozo1@goldwax.hu / dolgozo123</Text>
+            </View>
+            <View style={styles.credentialItem}>
+              <Text style={styles.credentialLabel}>Dolgozó 2:</Text>
+              <Text style={styles.credentialValue}>dolgozo2@goldwax.hu / dolgozo456</Text>
+            </View>
           </View>
+
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -263,33 +246,47 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600' as const,
   },
-  quickAccess: {
-    marginTop: 30,
+  errorContainer: {
+    backgroundColor: '#ffebee',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#ffcdd2',
+  },
+  errorText: {
+    color: '#c62828',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  credentialsInfo: {
+    marginTop: 20,
     marginHorizontal: 20,
-    padding: 20,
+    padding: 16,
     backgroundColor: Colors.surface,
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  quickAccessTitle: {
+  credentialsTitle: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    fontWeight: '600' as const,
+    color: Colors.text,
     marginBottom: 12,
     textAlign: 'center',
   },
-  quickButton: {
-    backgroundColor: Colors.accent,
-    borderRadius: 10,
-    padding: 14,
+  credentialItem: {
     marginBottom: 8,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.border,
   },
-  quickButtonText: {
+  credentialLabel: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginBottom: 2,
+  },
+  credentialValue: {
+    fontSize: 13,
     color: Colors.text,
-    fontSize: 14,
-    fontWeight: '500' as const,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
+
 });

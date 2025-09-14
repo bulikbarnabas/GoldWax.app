@@ -12,32 +12,31 @@ const defaultUsers: User[] = [
     name: 'Admin',
     email: 'admin@goldwax.hu',
     role: 'admin',
-    pin: '1234'
+    password: 'admin123'
   },
   {
     id: 'emp-1',
     name: 'Dolgozó 1',
     email: 'dolgozo1@goldwax.hu',
     role: 'employee',
-    pin: '0000'
+    password: 'dolgozo123'
   },
   {
     id: 'emp-2',
     name: 'Dolgozó 2',
     email: 'dolgozo2@goldwax.hu',
     role: 'employee',
-    pin: '1111'
+    password: 'dolgozo456'
   }
 ];
 
 export const [AuthProvider, useAuth] = createContextHook(() => {
-  // Alapértelmezett állapot - nincs bejelentkezett felhasználó
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
     isAuthenticated: false
   });
   const [users, setUsers] = useState<User[]>(defaultUsers);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading] = useState(false);
 
   useEffect(() => {
     // Felhasználók listája és mentett bejelentkezés betöltése
@@ -73,8 +72,8 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     }
   };
 
-  const login = useCallback(async (email: string, pin: string): Promise<boolean> => {
-    const user = users.find(u => u.email === email && u.pin === pin);
+  const login = useCallback(async (email: string, password: string): Promise<boolean> => {
+    const user = users.find(u => u.email === email && u.password === password);
     
     if (user) {
       const newAuthState = {

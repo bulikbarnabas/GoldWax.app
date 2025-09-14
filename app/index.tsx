@@ -5,29 +5,29 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Image,
-  Dimensions,
-  ActivityIndicator,
-  Platform
+  ActivityIndicator
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Clock, Users, Star, MapPin, Phone, ChevronRight, Sparkles } from 'lucide-react-native';
 import { Colors } from '@/constants/colors';
 import { useAuth } from '@/hooks/use-auth';
 
-const { width } = Dimensions.get('window');
+
 
 export default function WelcomeScreen() {
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(false);
 
-  // Ha már be van jelentkezve, navigáljon a szolgáltatások oldalra
   useEffect(() => {
     if (isAuthenticated && user) {
-      // Mindenki a szolgáltatások oldalra kerül belépés után
-      router.replace('/(tabs)/services');
+      if (user.role === 'admin') {
+        router.replace('/admin');
+      } else {
+        router.replace('/(tabs)/services');
+      }
     }
   }, [isAuthenticated, user, router]);
 
@@ -40,7 +40,8 @@ export default function WelcomeScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={styles.container}>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
       <LinearGradient
         colors={[Colors.gold.light, Colors.background]}
         style={styles.header}
@@ -150,7 +151,8 @@ export default function WelcomeScreen() {
           </View>
         </View>
       </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -158,6 +160,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  scrollView: {
+    flex: 1,
   },
   header: {
     paddingTop: 60,
