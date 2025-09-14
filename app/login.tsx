@@ -121,22 +121,6 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.credentialsInfo}>
-            <Text style={styles.credentialsTitle}>Bejelentkezési adatok:</Text>
-            <View style={styles.credentialItem}>
-              <Text style={styles.credentialLabel}>Admin:</Text>
-              <Text style={styles.credentialValue}>admin@goldwax.hu / admin123</Text>
-            </View>
-            <View style={styles.credentialItem}>
-              <Text style={styles.credentialLabel}>Dolgozó 1:</Text>
-              <Text style={styles.credentialValue}>dolgozo1@goldwax.hu / dolgozo123</Text>
-            </View>
-            <View style={styles.credentialItem}>
-              <Text style={styles.credentialLabel}>Dolgozó 2:</Text>
-              <Text style={styles.credentialValue}>dolgozo2@goldwax.hu / dolgozo456</Text>
-            </View>
-          </View>
-
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -259,34 +243,4 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
   },
-  credentialsInfo: {
-    marginTop: 20,
-    marginHorizontal: 20,
-    padding: 16,
-    backgroundColor: Colors.surface,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  credentialsTitle: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-    color: Colors.text,
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  credentialItem: {
-    marginBottom: 8,
-  },
-  credentialLabel: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    marginBottom: 2,
-  },
-  credentialValue: {
-    fontSize: 13,
-    color: Colors.text,
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-  },
-
 });
