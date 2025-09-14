@@ -39,7 +39,13 @@ export default function LoginScreen() {
     
     if (success) {
       setTimeout(() => {
-        router.replace('/');
+        // Ellenőrizzük a felhasználó szerepkörét a bejelentkezés után
+        const userRole = email.includes('admin') ? 'admin' : 'employee';
+        if (userRole === 'admin') {
+          router.replace('/(tabs)/dashboard');
+        } else {
+          router.replace('/(tabs)/services');
+        }
       }, 100);
     } else {
       setErrorMessage('Hibás email vagy jelszó!');

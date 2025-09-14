@@ -24,11 +24,14 @@ export default function WelcomeScreen() {
   useEffect(() => {
     if (!authLoading) {
       if (isAuthenticated && user) {
-        // Csak dolgozók menjenek a szolgáltatások oldalra
+        // Dolgozók menjenek a szolgáltatások oldalra
         if (user.role === 'employee') {
           router.replace('/(tabs)/services');
         }
-        // Admin felhasználók maradnak a főoldalon vagy manuálisan navigálnak
+        // Admin felhasználók menjenek a dashboard-ra
+        else if (user.role === 'admin') {
+          router.replace('/(tabs)/dashboard');
+        }
       }
     }
   }, [isAuthenticated, user, router, authLoading]);
@@ -41,7 +44,7 @@ export default function WelcomeScreen() {
       } else {
         // Ha be van jelentkezve, menjen a megfelelő oldalra
         if (user?.role === 'admin') {
-          router.push('/admin');
+          router.push('/(tabs)/dashboard');
         } else {
           router.push('/(tabs)/services');
         }
