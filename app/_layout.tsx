@@ -1,27 +1,15 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { StyleSheet } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { CartProvider } from "@/hooks/use-cart";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ClientsProvider } from "@/hooks/use-clients";
 import { InventoryProvider } from "@/hooks/use-inventory";
-import { trpc, trpcClient } from "@/lib/trpc";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1,
-      refetchOnWindowFocus: false,
-      staleTime: 5 * 60 * 1000, // 5 minutes
-    },
-  },
-});
 
 function RootLayoutNav() {
   return (
@@ -44,9 +32,6 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
-  const [client] = useState(() => trpcClient);
-  const [qClient] = useState(() => queryClient);
-
   useEffect(() => {
     const hideSplash = async () => {
       try {
@@ -62,21 +47,17 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <trpc.Provider client={client} queryClient={qClient}>
-      <QueryClientProvider client={qClient}>
-        <GestureHandlerRootView style={styles.container}>
-          <AuthProvider>
-            <ClientsProvider>
-              <InventoryProvider>
-                <CartProvider>
-                  <RootLayoutNav />
-                </CartProvider>
-              </InventoryProvider>
-            </ClientsProvider>
-          </AuthProvider>
-        </GestureHandlerRootView>
-      </QueryClientProvider>
-    </trpc.Provider>
+    <GestureHandlerRootView style={styles.container}>
+      <AuthProvider>
+        <ClientsProvider>
+          <InventoryProvider>
+            <CartProvider>
+              <RootLayoutNav />
+            </CartProvider>
+          </InventoryProvider>
+        </ClientsProvider>
+      </AuthProvider>
+    </GestureHandlerRootView>
   );
 }
 

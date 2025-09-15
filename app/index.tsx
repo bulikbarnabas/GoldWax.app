@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
-  ActivityIndicator
+  TouchableOpacity
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -16,51 +15,28 @@ import { useAuth } from '@/hooks/use-auth';
 
 export default function WelcomeScreen() {
   const router = useRouter();
-  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
-  const [loading, setLoading] = useState(false);
+  const { user, isAuthenticated } = useAuth();
 
-  const handleEnter = async () => {
-    try {
-      setLoading(true);
-      
-      // Add a small delay to show loading state
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      if (!isAuthenticated) {
-        router.push('/login');
-      } else {
-        const targetRoute = user?.role === 'admin' ? '/(tabs)/dashboard' : '/(tabs)/services';
-        router.push(targetRoute);
-      }
-    } catch (error) {
-      console.error('Navigation error:', error);
-    } finally {
-      setLoading(false);
+  const handleEnter = () => {
+    if (!isAuthenticated) {
+      router.push('/login');
+    } else {
+      const targetRoute = user?.role === 'admin' ? '/(tabs)/dashboard' : '/(tabs)/services';
+      router.push(targetRoute);
     }
   };
 
   // Auto-navigate if already authenticated
   useEffect(() => {
-    if (!authLoading && isAuthenticated && user) {
+    if (isAuthenticated && user) {
       const timer = setTimeout(() => {
         const targetRoute = user.role === 'admin' ? '/(tabs)/dashboard' : '/(tabs)/services';
         router.replace(targetRoute);
-      }, 2000); // Increased delay to show welcome screen
+      }, 1500);
       
       return () => clearTimeout(timer);
     }
-  }, [authLoading, isAuthenticated, user, router]);
-
-  if (authLoading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.loadingText}>Betöltés...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  }, [isAuthenticated, user, router]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -143,22 +119,15 @@ export default function WelcomeScreen() {
           <TouchableOpacity 
             style={styles.enterButton}
             onPress={handleEnter}
-            disabled={loading}
           >
             <LinearGradient
               colors={[Colors.gold.main, Colors.gold.dark]}
               style={styles.buttonGradient}
             >
-              {loading ? (
-                <ActivityIndicator color="white" />
-              ) : (
-                <>
-                  <Text style={styles.enterButtonText}>
-                    {isAuthenticated ? 'Alkalmazás megnyitása' : 'Bejelentkezés'}
-                  </Text>
-                  <ChevronRight size={24} color="white" />
-                </>
-              )}
+              <Text style={styles.enterButtonText}>
+                {isAuthenticated ? 'Alkalmazás megnyitása' : 'Bejelentkezés'}
+              </Text>
+              <ChevronRight size={24} color="white" />
             </LinearGradient>
           </TouchableOpacity>
 
