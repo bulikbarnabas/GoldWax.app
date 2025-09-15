@@ -53,9 +53,21 @@ export default function LoginScreen() {
         // Small delay to ensure auth state is updated
         await new Promise(resolve => setTimeout(resolve, 200));
         
-        // Force navigation with replace to avoid back button issues
+        // Better web navigation handling for all browsers
         if (Platform.OS === 'web') {
-          window.location.href = '/(tabs)/services';
+          // Use router.replace for web too, with fallback
+          try {
+            router.replace('/(tabs)/services');
+            // Additional fallback for stubborn browsers
+            setTimeout(() => {
+              if (window.location.pathname === '/login') {
+                window.location.replace('/services');
+              }
+            }, 500);
+          } catch (e) {
+            // Final fallback
+            window.location.replace('/services');
+          }
         } else {
           router.replace('/(tabs)/services');
         }

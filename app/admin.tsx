@@ -142,11 +142,24 @@ export default function AdminScreen() {
     if (Platform.OS === 'web') {
       const confirmed = window.confirm(`Biztosan törölni szeretné ${userName} felhasználót?`);
       if (confirmed) {
-        const success = await deleteUser(userId);
-        if (success) {
-          window.alert('Felhasználó sikeresen törölve!');
-        } else {
-          window.alert('Nem törölheti saját magát vagy nem sikerült a törlés!');
+        setIsLoading(true);
+        try {
+          const success = await deleteUser(userId);
+          // Force a small delay to ensure state is updated
+          await new Promise(resolve => setTimeout(resolve, 200));
+          
+          if (success) {
+            window.alert('Felhasználó sikeresen törölve!');
+            // Force re-render on web
+            window.location.reload();
+          } else {
+            window.alert('Nem törölheti saját magát vagy nem sikerült a törlés!');
+          }
+        } catch (error) {
+          console.error('Delete error:', error);
+          window.alert('Hiba történt a törlés során!');
+        } finally {
+          setIsLoading(false);
         }
       }
     } else {
@@ -159,11 +172,19 @@ export default function AdminScreen() {
             text: 'Törlés',
             style: 'destructive',
             onPress: async () => {
-              const success = await deleteUser(userId);
-              if (success) {
-                Alert.alert('Siker', 'Felhasználó sikeresen törölve!');
-              } else {
-                Alert.alert('Hiba', 'Nem törölheti saját magát vagy nem sikerült a törlés!');
+              setIsLoading(true);
+              try {
+                const success = await deleteUser(userId);
+                if (success) {
+                  Alert.alert('Siker', 'Felhasználó sikeresen törölve!');
+                } else {
+                  Alert.alert('Hiba', 'Nem törölheti saját magát vagy nem sikerült a törlés!');
+                }
+              } catch (error) {
+                console.error('Delete error:', error);
+                Alert.alert('Hiba', 'Hiba történt a törlés során!');
+              } finally {
+                setIsLoading(false);
               }
             }
           }
@@ -195,8 +216,31 @@ export default function AdminScreen() {
     if (Platform.OS === 'web') {
       const confirmed = window.confirm('Biztosan ki szeretne jelentkezni?');
       if (confirmed) {
-        await logout();
-        router.replace('/login');
+        setIsLoading(true);
+        try {
+          await logout();
+          // Force a small delay to ensure state is updated
+          await new Promise(resolve => setTimeout(resolve, 200));
+          
+          // Better web navigation handling
+          try {
+            router.replace('/login');
+            // Additional fallback for stubborn browsers
+            setTimeout(() => {
+              if (window.location.pathname !== '/login') {
+                window.location.replace('/login');
+              }
+            }, 500);
+          } catch (e) {
+            // Final fallback
+            window.location.replace('/login');
+          }
+        } catch (error) {
+          console.error('Logout error:', error);
+          window.alert('Hiba történt a kijelentkezés során!');
+        } finally {
+          setIsLoading(false);
+        }
       }
     } else {
       Alert.alert(
@@ -208,8 +252,16 @@ export default function AdminScreen() {
             text: 'Kijelentkezés',
             style: 'destructive',
             onPress: async () => {
-              await logout();
-              router.replace('/login');
+              setIsLoading(true);
+              try {
+                await logout();
+                router.replace('/login');
+              } catch (error) {
+                console.error('Logout error:', error);
+                Alert.alert('Hiba', 'Hiba történt a kijelentkezés során!');
+              } finally {
+                setIsLoading(false);
+              }
             }
           }
         ]
@@ -230,10 +282,15 @@ export default function AdminScreen() {
             <Text style={styles.addButtonText}>Új felhasználó</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.logoutButton}
+            style={[styles.logoutButton, isLoading && styles.disabledButton]}
             onPress={handleLogout}
+            disabled={isLoading}
           >
-            <LogOut size={20} color="#fff" />
+            {isLoading ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <LogOut size={20} color="#fff" />
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -287,15 +344,17 @@ export default function AdminScreen() {
               <TouchableOpacity
                 style={styles.actionButton}
                 onPress={() => openEditModal(u)}
+                disabled={isLoading}
               >
-                <Edit2 size={18} color="#666" />
+                <Edit2 size={18} color={isLoading ? "#ccc" : "#666"} />
               </TouchableOpacity>
               {u.id !== user?.id && (
                 <TouchableOpacity
-                  style={[styles.actionButton, styles.deleteButton]}
+                  style={[styles.actionButton, styles.deleteButton, isLoading && styles.disabledButton]}
                   onPress={() => handleDeleteUser(u.id, u.name)}
+                  disabled={isLoading}
                 >
-                  <Trash2 size={18} color="#ff4444" />
+                  <Trash2 size={18} color={isLoading ? "#ffcccc" : "#ff4444"} />
                 </TouchableOpacity>
               )}
             </View>

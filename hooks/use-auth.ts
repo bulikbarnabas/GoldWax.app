@@ -31,12 +31,23 @@ const defaultUsers: User[] = [
   }
 ];
 
-// Web-safe storage wrapper
+// Web-safe storage wrapper with better browser compatibility
 const safeStorage = {
   async getItem(key: string): Promise<string | null> {
     try {
       if (Platform.OS === 'web') {
-        return localStorage.getItem(key);
+        // Check if localStorage is available and accessible
+        if (typeof window !== 'undefined' && window.localStorage) {
+          try {
+            const value = window.localStorage.getItem(key);
+            return value;
+          } catch (e) {
+            // Handle Safari private mode or other browser restrictions
+            console.warn('localStorage not accessible:', e);
+            return null;
+          }
+        }
+        return null;
       }
       return await AsyncStorage.getItem(key);
     } catch (error) {
@@ -47,7 +58,21 @@ const safeStorage = {
   async setItem(key: string, value: string): Promise<void> {
     try {
       if (Platform.OS === 'web') {
-        localStorage.setItem(key, value);
+        // Check if localStorage is available and accessible
+        if (typeof window !== 'undefined' && window.localStorage) {
+          try {
+            window.localStorage.setItem(key, value);
+            // Force storage event for cross-tab sync
+            window.dispatchEvent(new StorageEvent('storage', {
+              key,
+              newValue: value,
+              url: window.location.href
+            }));
+          } catch (e) {
+            // Handle Safari private mode or other browser restrictions
+            console.warn('localStorage not accessible:', e);
+          }
+        }
       } else {
         await AsyncStorage.setItem(key, value);
       }
@@ -58,7 +83,21 @@ const safeStorage = {
   async removeItem(key: string): Promise<void> {
     try {
       if (Platform.OS === 'web') {
-        localStorage.removeItem(key);
+        // Check if localStorage is available and accessible
+        if (typeof window !== 'undefined' && window.localStorage) {
+          try {
+            window.localStorage.removeItem(key);
+            // Force storage event for cross-tab sync
+            window.dispatchEvent(new StorageEvent('storage', {
+              key,
+              newValue: null,
+              url: window.location.href
+            }));
+          } catch (e) {
+            // Handle Safari private mode or other browser restrictions
+            console.warn('localStorage not accessible:', e);
+          }
+        }
       } else {
         await AsyncStorage.removeItem(key);
       }
