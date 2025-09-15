@@ -21,30 +21,41 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
         with:
-          node-version: '20'
+          bun-version: latest
 
       - name: Install dependencies
-        run: npm install
+        run: bun install
 
-      - name: Setup Expo CLI
-        run: npm install -g @expo/cli
+      - name: Clear cache
+        run: |
+          rm -rf .expo
+          rm -rf node_modules/.cache
 
       - name: Build for web
         run: |
-          npx expo export --platform web --output-dir dist
+          bunx expo export --platform web --output-dir dist --clear
           echo "Build completed, checking output..."
           ls -la dist/
         env:
           NODE_ENV: production
-          EXPO_PUBLIC_BASE_PATH: ${{ github.event.repository.name }}
+          CI: true
+          GITHUB_PAGES: true
+          GITHUB_REPOSITORY: ${{ github.repository }}
 
-      - name: Add 404 fallback for SPA
+      - name: Add 404 fallback and base path fix
         run: |
           cp dist/index.html dist/404.html
           touch dist/.nojekyll
+          
+          # Fix base path for GitHub Pages if needed
+          if [ "${{ github.event.repository.name }}" != "" ]; then
+            sed -i 's|href="/|href="/${{ github.event.repository.name }}/|g' dist/index.html dist/404.html
+            sed -i 's|src="/|src="/${{ github.event.repository.name }}/|g' dist/index.html dist/404.html
+          fi
+          
           echo "Files in dist after setup:"
           ls -la dist/
 
