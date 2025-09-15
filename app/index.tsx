@@ -5,8 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
-  Platform
+  ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -22,44 +21,17 @@ export default function WelcomeScreen() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
 
-  const handleEnter = async () => {
+  const handleEnter = () => {
     setLoading(true);
     
-    try {
-      // Add a small delay for better UX
-      await new Promise(resolve => setTimeout(resolve, 200));
-      
-      console.log('Navigation attempt:', { isAuthenticated, userRole: user?.role });
-      
-      if (!isAuthenticated) {
-        console.log('Navigating to login');
-        router.push('/login');
-      } else {
-        const targetRoute = user?.role === 'admin' ? '/(tabs)/dashboard' : '/(tabs)/services';
-        console.log('Navigating to:', targetRoute);
-        router.push(targetRoute);
-      }
-    } catch (error) {
-      console.error('Navigation error:', error);
-      // Fallback navigation for web
-      if (Platform.OS === 'web') {
-        console.log('Using fallback navigation');
-        try {
-          if (!isAuthenticated) {
-            window.location.href = './login';
-          } else {
-            const webRoute = user?.role === 'admin' ? './dashboard' : './services';
-            window.location.href = webRoute;
-          }
-        } catch (webError) {
-          console.error('Web navigation fallback failed:', webError);
-          // Last resort - reload the page
-          window.location.reload();
-        }
-      }
-    } finally {
-      setLoading(false);
+    if (!isAuthenticated) {
+      router.push('/login');
+    } else {
+      const targetRoute = user?.role === 'admin' ? '/(tabs)/dashboard' : '/(tabs)/services';
+      router.push(targetRoute);
     }
+    
+    setTimeout(() => setLoading(false), 500);
   };
 
   return (
