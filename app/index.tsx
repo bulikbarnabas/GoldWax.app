@@ -22,9 +22,6 @@ export default function WelcomeScreen() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
 
-  // Eltávolítjuk az automatikus navigációt, ami problémát okozott
-  // A felhasználó manuálisan fog belépni a "Belépés" gombbal
-
   const handleEnter = async () => {
     setLoading(true);
     
