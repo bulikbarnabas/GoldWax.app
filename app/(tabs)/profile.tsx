@@ -5,33 +5,42 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Alert
+  Alert,
+  Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'expo-router';
-import { LogOut, Shield, User, Mail, Key } from 'lucide-react-native';
+import { LogOut, Shield, User, Mail } from 'lucide-react-native';
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
   const router = useRouter();
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Kijelentkezés',
-      'Biztosan ki szeretne jelentkezni?',
-      [
-        { text: 'Mégse', style: 'cancel' },
-        {
-          text: 'Kijelentkezés',
-          style: 'destructive',
-          onPress: async () => {
-            await logout();
-            router.replace('/login');
+  const handleLogout = async () => {
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('Biztosan ki szeretne jelentkezni?');
+      if (confirmed) {
+        await logout();
+        router.replace('/login');
+      }
+    } else {
+      Alert.alert(
+        'Kijelentkezés',
+        'Biztosan ki szeretne jelentkezni?',
+        [
+          { text: 'Mégse', style: 'cancel' },
+          {
+            text: 'Kijelentkezés',
+            style: 'destructive',
+            onPress: async () => {
+              await logout();
+              router.replace('/login');
+            }
           }
-        }
-      ]
-    );
+        ]
+      );
+    }
   };
 
   const handleAdminPanel = () => {
@@ -66,16 +75,6 @@ export default function ProfileScreen() {
               <View style={styles.infoContent}>
                 <Text style={styles.infoLabel}>Email</Text>
                 <Text style={styles.infoValue}>{user.email}</Text>
-              </View>
-            </View>
-
-            <View style={styles.divider} />
-
-            <View style={styles.infoRow}>
-              <Key size={20} color="#666" />
-              <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>PIN kód</Text>
-                <Text style={styles.infoValue}>••••</Text>
               </View>
             </View>
 

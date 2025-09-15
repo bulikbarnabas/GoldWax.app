@@ -8,7 +8,8 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
-  Modal
+  Modal,
+  Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/hooks/use-auth';
@@ -44,12 +45,20 @@ export default function AdminScreen() {
 
   const handleAddUser = async () => {
     if (!formData.name || !formData.email || !formData.password) {
-      Alert.alert('Hiba', 'Minden mező kitöltése kötelező!');
+      if (Platform.OS === 'web') {
+        window.alert('Minden mező kitöltése kötelező!');
+      } else {
+        Alert.alert('Hiba', 'Minden mező kitöltése kötelező!');
+      }
       return;
     }
 
     if (formData.password.length < 6) {
-      Alert.alert('Hiba', 'A jelszó legalább 6 karakter hosszú kell legyen!');
+      if (Platform.OS === 'web') {
+        window.alert('A jelszó legalább 6 karakter hosszú kell legyen!');
+      } else {
+        Alert.alert('Hiba', 'A jelszó legalább 6 karakter hosszú kell legyen!');
+      }
       return;
     }
 
@@ -68,9 +77,17 @@ export default function AdminScreen() {
     if (success) {
       setShowAddModal(false);
       resetForm();
-      Alert.alert('Siker', 'Felhasználó sikeresen hozzáadva!');
+      if (Platform.OS === 'web') {
+        window.alert('Felhasználó sikeresen hozzáadva!');
+      } else {
+        Alert.alert('Siker', 'Felhasználó sikeresen hozzáadva!');
+      }
     } else {
-      Alert.alert('Hiba', 'Ez az email cím már használatban van!');
+      if (Platform.OS === 'web') {
+        window.alert('Ez az email cím már használatban van!');
+      } else {
+        Alert.alert('Hiba', 'Ez az email cím már használatban van!');
+      }
     }
   };
 
@@ -78,12 +95,20 @@ export default function AdminScreen() {
     if (!editingUser) return;
 
     if (!formData.name || !formData.email || !formData.password) {
-      Alert.alert('Hiba', 'Minden mező kitöltése kötelező!');
+      if (Platform.OS === 'web') {
+        window.alert('Minden mező kitöltése kötelező!');
+      } else {
+        Alert.alert('Hiba', 'Minden mező kitöltése kötelező!');
+      }
       return;
     }
 
     if (formData.password.length < 6) {
-      Alert.alert('Hiba', 'A jelszó legalább 6 karakter hosszú kell legyen!');
+      if (Platform.OS === 'web') {
+        window.alert('A jelszó legalább 6 karakter hosszú kell legyen!');
+      } else {
+        Alert.alert('Hiba', 'A jelszó legalább 6 karakter hosszú kell legyen!');
+      }
       return;
     }
 
@@ -99,32 +124,52 @@ export default function AdminScreen() {
     if (success) {
       setEditingUser(null);
       resetForm();
-      Alert.alert('Siker', 'Felhasználó sikeresen módosítva!');
+      if (Platform.OS === 'web') {
+        window.alert('Felhasználó sikeresen módosítva!');
+      } else {
+        Alert.alert('Siker', 'Felhasználó sikeresen módosítva!');
+      }
     } else {
-      Alert.alert('Hiba', 'Nem sikerült módosítani a felhasználót!');
+      if (Platform.OS === 'web') {
+        window.alert('Nem sikerült módosítani a felhasználót!');
+      } else {
+        Alert.alert('Hiba', 'Nem sikerült módosítani a felhasználót!');
+      }
     }
   };
 
-  const handleDeleteUser = (userId: string, userName: string) => {
-    Alert.alert(
-      'Törlés megerősítése',
-      `Biztosan törölni szeretné ${userName} felhasználót?`,
-      [
-        { text: 'Mégse', style: 'cancel' },
-        {
-          text: 'Törlés',
-          style: 'destructive',
-          onPress: async () => {
-            const success = await deleteUser(userId);
-            if (success) {
-              Alert.alert('Siker', 'Felhasználó sikeresen törölve!');
-            } else {
-              Alert.alert('Hiba', 'Nem törölheti saját magát vagy nem sikerült a törlés!');
+  const handleDeleteUser = async (userId: string, userName: string) => {
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(`Biztosan törölni szeretné ${userName} felhasználót?`);
+      if (confirmed) {
+        const success = await deleteUser(userId);
+        if (success) {
+          window.alert('Felhasználó sikeresen törölve!');
+        } else {
+          window.alert('Nem törölheti saját magát vagy nem sikerült a törlés!');
+        }
+      }
+    } else {
+      Alert.alert(
+        'Törlés megerősítése',
+        `Biztosan törölni szeretné ${userName} felhasználót?`,
+        [
+          { text: 'Mégse', style: 'cancel' },
+          {
+            text: 'Törlés',
+            style: 'destructive',
+            onPress: async () => {
+              const success = await deleteUser(userId);
+              if (success) {
+                Alert.alert('Siker', 'Felhasználó sikeresen törölve!');
+              } else {
+                Alert.alert('Hiba', 'Nem törölheti saját magát vagy nem sikerült a törlés!');
+              }
             }
           }
-        }
-      ]
-    );
+        ]
+      );
+    }
   };
 
   const resetForm = () => {
@@ -146,22 +191,30 @@ export default function AdminScreen() {
     });
   };
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Kijelentkezés',
-      'Biztosan ki szeretne jelentkezni?',
-      [
-        { text: 'Mégse', style: 'cancel' },
-        {
-          text: 'Kijelentkezés',
-          style: 'destructive',
-          onPress: async () => {
-            await logout();
-            router.replace('/');
+  const handleLogout = async () => {
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('Biztosan ki szeretne jelentkezni?');
+      if (confirmed) {
+        await logout();
+        router.replace('/login');
+      }
+    } else {
+      Alert.alert(
+        'Kijelentkezés',
+        'Biztosan ki szeretne jelentkezni?',
+        [
+          { text: 'Mégse', style: 'cancel' },
+          {
+            text: 'Kijelentkezés',
+            style: 'destructive',
+            onPress: async () => {
+              await logout();
+              router.replace('/login');
+            }
           }
-        }
-      ]
-    );
+        ]
+      );
+    }
   };
 
   return (

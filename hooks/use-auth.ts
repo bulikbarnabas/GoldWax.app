@@ -94,12 +94,18 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   }, [users]);
 
   const logout = useCallback(async () => {
-    const newAuthState = {
-      user: null,
-      isAuthenticated: false
-    };
-    setAuthState(newAuthState);
-    await AsyncStorage.removeItem(STORAGE_KEY);
+    try {
+      const newAuthState = {
+        user: null,
+        isAuthenticated: false
+      };
+      setAuthState(newAuthState);
+      await AsyncStorage.removeItem(STORAGE_KEY).catch(err => {
+        console.error('Error removing auth state:', err);
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   }, []);
 
   const addUser = useCallback(async (user: User): Promise<boolean> => {
@@ -142,14 +148,21 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   }, [authState, users]);
 
   const deleteUser = useCallback(async (userId: string): Promise<boolean> => {
-    if (authState.user?.role !== 'admin' || userId === authState.user.id) {
+    try {
+      if (authState.user?.role !== 'admin' || userId === authState.user.id) {
+        return false;
+      }
+
+      const updatedUsers = users.filter(u => u.id !== userId);
+      setUsers(updatedUsers);
+      await AsyncStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers)).catch(err => {
+        console.error('Error saving users after delete:', err);
+      });
+      return true;
+    } catch (error) {
+      console.error('Delete user error:', error);
       return false;
     }
-
-    const updatedUsers = users.filter(u => u.id !== userId);
-    setUsers(updatedUsers);
-    await AsyncStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
-    return true;
   }, [authState.user?.role, authState.user?.id, users]);
 
   const contextValue = useMemo(() => ({
