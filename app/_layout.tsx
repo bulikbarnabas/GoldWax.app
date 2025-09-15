@@ -8,6 +8,7 @@ import { CartProvider } from "@/hooks/use-cart";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ClientsProvider } from "@/hooks/use-clients";
 import { InventoryProvider } from "@/hooks/use-inventory";
+import { trpc, trpcClient } from "@/lib/trpc";
 
 // Web-specific error boundary
 class WebErrorBoundary extends Component<
@@ -150,17 +151,19 @@ export default function RootLayout() {
   return (
     <WebErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <GestureHandlerRootView style={styles.container}>
-          <AuthProvider>
-            <ClientsProvider>
-              <InventoryProvider>
-                <CartProvider>
-                  <RootLayoutNav />
-                </CartProvider>
-              </InventoryProvider>
-            </ClientsProvider>
-          </AuthProvider>
-        </GestureHandlerRootView>
+        <trpc.Provider client={trpcClient} queryClient={queryClient}>
+          <GestureHandlerRootView style={styles.container}>
+            <AuthProvider>
+              <ClientsProvider>
+                <InventoryProvider>
+                  <CartProvider>
+                    <RootLayoutNav />
+                  </CartProvider>
+                </InventoryProvider>
+              </ClientsProvider>
+            </AuthProvider>
+          </GestureHandlerRootView>
+        </trpc.Provider>
       </QueryClientProvider>
     </WebErrorBoundary>
   );
