@@ -102,16 +102,17 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   const loadAuthState = useCallback(async () => {
     try {
       const stored = await universalStorage.getItem(STORAGE_KEY);
-      if (stored) {
+      if (stored && stored !== 'undefined') {
         const parsedAuth = JSON.parse(stored);
         // Validate that the user still exists in the users list
-        if (parsedAuth.user) {
+        if (parsedAuth.user && parsedAuth.user.id) {
           const userExists = users.some(u => u.id === parsedAuth.user.id);
           if (userExists) {
             setAuthState(parsedAuth);
           } else {
             // User no longer exists, clear auth
             await universalStorage.removeItem(STORAGE_KEY);
+            setAuthState({ user: null, isAuthenticated: false });
           }
         }
       }
@@ -119,6 +120,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       console.error('Error loading auth state:', error);
       // Clear potentially corrupted auth state
       await universalStorage.removeItem(STORAGE_KEY);
+      setAuthState({ user: null, isAuthenticated: false });
     } finally {
       setIsLoading(false);
     }

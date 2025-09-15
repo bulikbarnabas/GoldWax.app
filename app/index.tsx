@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,177 +10,171 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Clock, Users, Star, MapPin, Phone, ChevronRight, Sparkles, CheckCircle, XCircle } from 'lucide-react-native';
+import { Clock, Users, Star, MapPin, Phone, ChevronRight, Sparkles } from 'lucide-react-native';
 import { Colors } from '@/constants/colors';
 import { useAuth } from '@/hooks/use-auth';
-import { trpc } from '@/lib/trpc';
-
-
 
 export default function WelcomeScreen() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
-  
-  // Backend health check
-  const healthQuery = trpc.health.useQuery(undefined, {
-    retry: 2,
-    refetchInterval: 5000,
-  });
 
-  const handleEnter = () => {
-    setLoading(true);
-    
-    if (!isAuthenticated) {
-      router.push('/login');
-    } else {
-      const targetRoute = user?.role === 'admin' ? '/(tabs)/dashboard' : '/(tabs)/services';
-      router.push(targetRoute);
+  const handleEnter = async () => {
+    try {
+      setLoading(true);
+      
+      // Add a small delay to show loading state
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      if (!isAuthenticated) {
+        router.push('/login');
+      } else {
+        const targetRoute = user?.role === 'admin' ? '/(tabs)/dashboard' : '/(tabs)/services';
+        router.push(targetRoute);
+      }
+    } catch (error) {
+      console.error('Navigation error:', error);
+    } finally {
+      setLoading(false);
     }
-    
-    setTimeout(() => setLoading(false), 500);
   };
 
-  return (
-    <SafeAreaView style={styles.container}>
-      {authLoading ? (
+  // Auto-navigate if already authenticated
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && user) {
+      const timer = setTimeout(() => {
+        const targetRoute = user.role === 'admin' ? '/(tabs)/dashboard' : '/(tabs)/services';
+        router.replace(targetRoute);
+      }, 2000); // Increased delay to show welcome screen
+      
+      return () => clearTimeout(timer);
+    }
+  }, [authLoading, isAuthenticated, user, router]);
+
+  if (authLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.primary} />
           <Text style={styles.loadingText}>Betöltés...</Text>
         </View>
-      ) : (
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-      <LinearGradient
-        colors={[Colors.gold.light, Colors.background]}
-        style={styles.header}
-      >
-        <View style={styles.logoContainer}>
-          <View style={styles.logoCircle}>
-            <Text style={styles.logoText}>GW</Text>
-          </View>
-          <Text style={styles.brandName}>GoldWax</Text>
-          <Text style={styles.tagline}>Prémium Szépségszalon</Text>
-          
-          {/* Backend status indicator */}
-          <View style={styles.statusContainer}>
-            {healthQuery.isLoading ? (
-              <View style={styles.statusBadge}>
-                <ActivityIndicator size="small" color={Colors.primary} />
-                <Text style={styles.statusText}>Kapcsolódás...</Text>
-              </View>
-            ) : healthQuery.data?.status === 'ok' ? (
-              <View style={[styles.statusBadge, styles.statusSuccess]}>
-                <CheckCircle size={16} color="#10b981" />
-                <Text style={[styles.statusText, styles.statusSuccessText]}>Backend aktív</Text>
-              </View>
-            ) : (
-              <View style={[styles.statusBadge, styles.statusError]}>
-                <XCircle size={16} color="#ef4444" />
-                <Text style={[styles.statusText, styles.statusErrorText]}>Backend hiba</Text>
-              </View>
-            )}
-          </View>
-        </View>
-      </LinearGradient>
-
-      <View style={styles.content}>
-        <View style={styles.welcomeCard}>
-          <Sparkles size={32} color={Colors.primary} />
-          <Text style={styles.welcomeTitle}>Időpont nélkül is fogadjuk!</Text>
-          <Text style={styles.welcomeText}>
-            Nincs szükség előzetes bejelentkezésre. Jöjjön, amikor Önnek megfelelő!
-          </Text>
-        </View>
-
-        <View style={styles.featuresContainer}>
-          <Text style={styles.sectionTitle}>Miért válasszon minket?</Text>
-          
-          <View style={styles.featureCard}>
-            <View style={styles.featureIcon}>
-              <Clock size={24} color={Colors.primary} />
-            </View>
-            <View style={styles.featureContent}>
-              <Text style={styles.featureTitle}>Időpont nélküli kiszolgálás</Text>
-              <Text style={styles.featureText}>Rugalmas nyitvatartás, várakozás nélkül</Text>
-            </View>
-          </View>
-
-          <View style={styles.featureCard}>
-            <View style={styles.featureIcon}>
-              <Users size={24} color={Colors.primary} />
-            </View>
-            <View style={styles.featureContent}>
-              <Text style={styles.featureTitle}>Szakképzett csapat</Text>
-              <Text style={styles.featureText}>Tapasztalt kozmetikusok és fodrászok</Text>
-            </View>
-          </View>
-
-          <View style={styles.featureCard}>
-            <View style={styles.featureIcon}>
-              <Star size={24} color={Colors.primary} />
-            </View>
-            <View style={styles.featureContent}>
-              <Text style={styles.featureTitle}>Prémium szolgáltatások</Text>
-              <Text style={styles.featureText}>Minőségi termékek és kezelések</Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.infoSection}>
-          <Text style={styles.sectionTitle}>Elérhetőségek</Text>
-          
-          <TouchableOpacity style={styles.infoCard}>
-            <MapPin size={20} color={Colors.secondary} />
-            <Text style={styles.infoText}>Budapest, Arany János u. 10.</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.infoCard}>
-            <Phone size={20} color={Colors.secondary} />
-            <Text style={styles.infoText}>+36 30 123 4567</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.infoCard}>
-            <Clock size={20} color={Colors.secondary} />
-            <Text style={styles.infoText}>H-P: 9:00-20:00, Szo: 9:00-18:00</Text>
-          </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity 
-          style={styles.enterButton}
-          onPress={handleEnter}
-          disabled={loading}
+        <LinearGradient
+          colors={[Colors.gold.light, Colors.background]}
+          style={styles.header}
         >
-          <LinearGradient
-            colors={[Colors.gold.main, Colors.gold.dark]}
-            style={styles.buttonGradient}
-          >
-            {loading ? (
-              <ActivityIndicator color="white" />
-            ) : (
-              <>
-                <Text style={styles.enterButtonText}>
-                  {isAuthenticated ? 'Alkalmazás megnyitása' : 'Bejelentkezés'}
-                </Text>
-                <ChevronRight size={24} color="white" />
-              </>
-            )}
-          </LinearGradient>
-        </TouchableOpacity>
+          <View style={styles.logoContainer}>
+            <View style={styles.logoCircle}>
+              <Text style={styles.logoText}>GW</Text>
+            </View>
+            <Text style={styles.brandName}>GoldWax</Text>
+            <Text style={styles.tagline}>Prémium Szépségszalon</Text>
+          </View>
+        </LinearGradient>
 
-        <View style={styles.socialSection}>
-          <Text style={styles.socialTitle}>Kövessen minket</Text>
-          <View style={styles.socialButtons}>
-            <TouchableOpacity style={styles.socialButton}>
-              <Text style={styles.socialIcon}>f</Text>
+        <View style={styles.content}>
+          <View style={styles.welcomeCard}>
+            <Sparkles size={32} color={Colors.primary} />
+            <Text style={styles.welcomeTitle}>Időpont nélkül is fogadjuk!</Text>
+            <Text style={styles.welcomeText}>
+              Nincs szükség előzetes bejelentkezésre. Jöjjön, amikor Önnek megfelelő!
+            </Text>
+          </View>
+
+          <View style={styles.featuresContainer}>
+            <Text style={styles.sectionTitle}>Miért válasszon minket?</Text>
+            
+            <View style={styles.featureCard}>
+              <View style={styles.featureIcon}>
+                <Clock size={24} color={Colors.primary} />
+              </View>
+              <View style={styles.featureContent}>
+                <Text style={styles.featureTitle}>Időpont nélküli kiszolgálás</Text>
+                <Text style={styles.featureText}>Rugalmas nyitvatartás, várakozás nélkül</Text>
+              </View>
+            </View>
+
+            <View style={styles.featureCard}>
+              <View style={styles.featureIcon}>
+                <Users size={24} color={Colors.primary} />
+              </View>
+              <View style={styles.featureContent}>
+                <Text style={styles.featureTitle}>Szakképzett csapat</Text>
+                <Text style={styles.featureText}>Tapasztalt kozmetikusok és fodrászok</Text>
+              </View>
+            </View>
+
+            <View style={styles.featureCard}>
+              <View style={styles.featureIcon}>
+                <Star size={24} color={Colors.primary} />
+              </View>
+              <View style={styles.featureContent}>
+                <Text style={styles.featureTitle}>Prémium szolgáltatások</Text>
+                <Text style={styles.featureText}>Minőségi termékek és kezelések</Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.infoSection}>
+            <Text style={styles.sectionTitle}>Elérhetőségek</Text>
+            
+            <TouchableOpacity style={styles.infoCard}>
+              <MapPin size={20} color={Colors.secondary} />
+              <Text style={styles.infoText}>Budapest, Arany János u. 10.</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.socialButton}>
-              <Text style={styles.socialIcon}>📷</Text>
+
+            <TouchableOpacity style={styles.infoCard}>
+              <Phone size={20} color={Colors.secondary} />
+              <Text style={styles.infoText}>+36 30 123 4567</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.infoCard}>
+              <Clock size={20} color={Colors.secondary} />
+              <Text style={styles.infoText}>H-P: 9:00-20:00, Szo: 9:00-18:00</Text>
             </TouchableOpacity>
           </View>
+
+          <TouchableOpacity 
+            style={styles.enterButton}
+            onPress={handleEnter}
+            disabled={loading}
+          >
+            <LinearGradient
+              colors={[Colors.gold.main, Colors.gold.dark]}
+              style={styles.buttonGradient}
+            >
+              {loading ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <>
+                  <Text style={styles.enterButtonText}>
+                    {isAuthenticated ? 'Alkalmazás megnyitása' : 'Bejelentkezés'}
+                  </Text>
+                  <ChevronRight size={24} color="white" />
+                </>
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
+
+          <View style={styles.socialSection}>
+            <Text style={styles.socialTitle}>Kövessen minket</Text>
+            <View style={styles.socialButtons}>
+              <TouchableOpacity style={styles.socialButton}>
+                <Text style={styles.socialIcon}>f</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.socialButton}>
+                <Text style={styles.socialIcon}>📷</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
-      </View>
       </ScrollView>
-      )}
     </SafeAreaView>
   );
 }

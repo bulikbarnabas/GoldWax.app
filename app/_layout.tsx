@@ -18,6 +18,7 @@ const queryClient = new QueryClient({
     queries: {
       retry: 1,
       refetchOnWindowFocus: false,
+      staleTime: 5 * 60 * 1000, // 5 minutes
     },
   },
 });
@@ -47,7 +48,17 @@ export default function RootLayout() {
   const [qClient] = useState(() => queryClient);
 
   useEffect(() => {
-    SplashScreen.hideAsync();
+    const hideSplash = async () => {
+      try {
+        await SplashScreen.hideAsync();
+      } catch (error) {
+        console.warn('Error hiding splash screen:', error);
+      }
+    };
+    
+    // Add a small delay to ensure everything is loaded
+    const timer = setTimeout(hideSplash, 100);
+    return () => clearTimeout(timer);
   }, []);
 
   return (
