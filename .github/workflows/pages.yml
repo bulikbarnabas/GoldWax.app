@@ -33,7 +33,7 @@ jobs:
           # Ensure all required dependencies are installed
           npm install --legacy-peer-deps ajv@8 @expo/webpack-config@19 html-webpack-plugin@5 webpack@5 webpack-cli@6 webpack-dev-server@5
           # Install Expo CLI globally
-          npm install -g expo-cli@latest
+          npm install -g @expo/cli@latest
 
       - name: Clear cache
         run: |
@@ -49,7 +49,7 @@ jobs:
           export GITHUB_REPOSITORY="${{ github.repository }}"
           
           # Build the web app
-          npx expo export --platform web --output-dir dist --base-path "/${{ github.event.repository.name }}"
+          npx expo export --platform web --output-dir dist
           
           echo "Build completed, checking output..."
           ls -la dist/
