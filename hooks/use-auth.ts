@@ -191,13 +191,6 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       setAuthState(newAuthState);
       await safeStorage.removeItem(STORAGE_KEY);
       
-      // Force reload on web to clear any cached state
-      if (Platform.OS === 'web') {
-        setTimeout(() => {
-          window.location.href = '/login';
-        }, 100);
-      }
-      
       console.log('Logout successful');
     } catch (error) {
       console.error('Logout error:', error);

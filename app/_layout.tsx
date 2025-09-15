@@ -1,8 +1,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Stack, usePathname, useRouter } from "expo-router";
+import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
-import { StyleSheet, Platform } from "react-native";
+import { StyleSheet } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { CartProvider } from "@/hooks/use-cart";
 import { AuthProvider } from "@/hooks/use-auth";
@@ -16,49 +16,7 @@ SplashScreen.preventAutoHideAsync();
 const queryClient = new QueryClient();
 
 function RootLayoutNav() {
-  const pathname = usePathname();
-  const router = useRouter();
-
-  useEffect(() => {
-    // Web-specific routing fix for page refresh
-    if (Platform.OS === 'web' && pathname) {
-      // Handle invalid routes on web
-      const validRoutes = [
-        '/',
-        '/login',
-        '/cart',
-        '/receipt',
-        '/admin',
-        '/reports',
-        '/settings',
-        '/clients',
-        '/inventory',
-        '/service-management',
-        '/barcode-scanner'
-      ];
-      
-      const validTabRoutes = [
-        '/services',
-        '/history',
-        '/profile',
-        '/dashboard'
-      ];
-      
-      // Check if current path is valid
-      const isValidRoute = validRoutes.some(route => pathname === route);
-      const isValidTabRoute = validTabRoutes.some(route => pathname === route);
-      const isTabsRoute = pathname.startsWith('/(tabs)');
-      
-      // Ha tab route-ot próbál elérni közvetlenül, irányítsuk át a (tabs) verzióra
-      if (isValidTabRoute && !isTabsRoute) {
-        router.replace(`/(tabs)${pathname}`);
-      }
-      // Ha nem valid route és nem (tabs) route, akkor főoldalra
-      else if (!isValidRoute && !isTabsRoute && pathname !== '/+not-found') {
-        router.replace('/');
-      }
-    }
-  }, [pathname, router]);
+  // Egyszerű routing konfiguráció problémás logika nélkül
 
   return (
     <Stack screenOptions={{ headerBackTitle: "Vissza" }}>

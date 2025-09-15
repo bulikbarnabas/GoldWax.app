@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
-  Platform
+  ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -22,35 +21,8 @@ export default function WelcomeScreen() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    let timeoutId: NodeJS.Timeout | null = null;
-    
-    if (!authLoading) {
-      if (isAuthenticated && user) {
-        // Web platformon késleltetett navigáció a jobb kompatibilitás érdekében
-        const navigateToApp = () => {
-          if (user.role === 'employee') {
-            router.replace('/(tabs)/services');
-          } else if (user.role === 'admin') {
-            router.replace('/(tabs)/dashboard');
-          }
-        };
-
-        if (Platform.OS === 'web') {
-          // Kis késleltetés a web platformon
-          timeoutId = setTimeout(navigateToApp, 100);
-        } else {
-          navigateToApp();
-        }
-      }
-    }
-    
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-    };
-  }, [isAuthenticated, user, router, authLoading]);
+  // Eltávolítjuk az automatikus navigációt, ami problémát okozott
+  // A felhasználó manuálisan fog belépni a "Belépés" gombbal
 
   const handleEnter = () => {
     setLoading(true);
