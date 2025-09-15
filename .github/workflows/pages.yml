@@ -28,8 +28,10 @@ jobs:
 
       - name: Install dependencies
         run: |
-          # Use npm with legacy peer deps to avoid conflicts
+          # Install all dependencies including dev dependencies
           npm install --legacy-peer-deps
+          # Ensure ajv and webpack dependencies are installed
+          npm install --legacy-peer-deps ajv@8 @expo/webpack-config@19 html-webpack-plugin@5 webpack@5 webpack-cli@5 webpack-dev-server@4
 
       - name: Clear cache
         run: |

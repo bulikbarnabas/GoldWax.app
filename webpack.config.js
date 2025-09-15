@@ -3,6 +3,21 @@ const createExpoWebpackConfigAsync = require('@expo/webpack-config');
 module.exports = async function (env, argv) {
   const config = await createExpoWebpackConfigAsync(env, argv);
   
+  // Fix for ajv module resolution
+  config.resolve = {
+    ...config.resolve,
+    alias: {
+      ...config.resolve.alias,
+      'ajv/dist/compile/codegen': require.resolve('ajv/dist/compile/codegen')
+    },
+    fallback: {
+      ...config.resolve.fallback,
+      "fs": false,
+      "path": false,
+      "crypto": false
+    }
+  };
+  
   // Customize the config before returning it
   if (config.mode === 'production') {
     // Optimize for production
