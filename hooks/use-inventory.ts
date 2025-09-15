@@ -1,39 +1,122 @@
 import createContextHook from '@nkzw/create-context-hook';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Inventory } from '@/types/salon';
+import { Platform, AppState, AppStateStatus } from 'react-native';
 
 const INVENTORY_STORAGE_KEY = 'salon_inventory';
+const SYNC_INTERVAL = 5000; // 5 másodperc
 
 export const [InventoryProvider, useInventory] = createContextHook(() => {
   const [items, setItems] = useState<Inventory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [lastSync, setLastSync] = useState<Date>(new Date());
+  const syncIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const appStateRef = useRef(AppState.currentState);
 
-  useEffect(() => {
-    loadInventory();
-  }, []);
-
-  const loadInventory = async () => {
+  // Készlet betöltése
+  const loadInventory = useCallback(async () => {
     try {
       const stored = await AsyncStorage.getItem(INVENTORY_STORAGE_KEY);
       if (stored) {
         const parsedItems = JSON.parse(stored);
-        setItems(parsedItems.map((item: any) => ({
+        const processedItems = parsedItems.map((item: any) => ({
           ...item,
           lastRestocked: item.lastRestocked ? new Date(item.lastRestocked) : undefined,
-        })));
+        }));
+        setItems(processedItems);
+        setLastSync(new Date());
+        console.log('Inventory loaded:', processedItems.length, 'items');
       }
     } catch (error) {
       console.error('Error loading inventory:', error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  // Automatikus szinkronizáció
+  useEffect(() => {
+    loadInventory();
+
+    // Rendszeres szinkronizáció beállítása
+    if (Platform.OS === 'web') {
+      syncIntervalRef.current = setInterval(() => {
+        loadInventory();
+      }, SYNC_INTERVAL);
+
+      // Storage esemény figyelése (más tabok változásai)
+      const handleStorageChange = (e: StorageEvent) => {
+        if (e.key === INVENTORY_STORAGE_KEY && e.newValue) {
+          try {
+            const parsedItems = JSON.parse(e.newValue);
+            const processedItems = parsedItems.map((item: any) => ({
+              ...item,
+              lastRestocked: item.lastRestocked ? new Date(item.lastRestocked) : undefined,
+            }));
+            setItems(processedItems);
+            setLastSync(new Date());
+            console.log('Inventory synced from another tab');
+          } catch (error) {
+            console.error('Error syncing from storage event:', error);
+          }
+        }
+      };
+
+      window.addEventListener('storage', handleStorageChange);
+
+      // Focus esemény figyelése
+      const handleFocus = () => {
+        loadInventory();
+      };
+
+      window.addEventListener('focus', handleFocus);
+
+      return () => {
+        if (syncIntervalRef.current) {
+          clearInterval(syncIntervalRef.current);
+        }
+        window.removeEventListener('storage', handleStorageChange);
+        window.removeEventListener('focus', handleFocus);
+      };
+    } else {
+      // Mobil app state változás figyelése
+      const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+        if (
+          appStateRef.current.match(/inactive|background/) &&
+          nextAppState === 'active'
+        ) {
+          loadInventory();
+        }
+        appStateRef.current = nextAppState;
+      });
+
+      return () => {
+        subscription.remove();
+      };
+    }
+  }, [loadInventory]);
+
+
 
   const saveInventory = useCallback(async (updatedItems: Inventory[]) => {
     try {
-      await AsyncStorage.setItem(INVENTORY_STORAGE_KEY, JSON.stringify(updatedItems));
+      const dataToSave = JSON.stringify(updatedItems);
+      await AsyncStorage.setItem(INVENTORY_STORAGE_KEY, dataToSave);
       setItems(updatedItems);
+      setLastSync(new Date());
+      
+      // Web esetén manuálisan triggereljük a storage eseményt
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        // Dispatch custom event for immediate sync
+        window.dispatchEvent(new StorageEvent('storage', {
+          key: INVENTORY_STORAGE_KEY,
+          newValue: dataToSave,
+          url: window.location.href
+        }));
+      }
+      
+      console.log('Inventory saved:', updatedItems.length, 'items');
     } catch (error) {
       console.error('Error saving inventory:', error);
     }
@@ -124,9 +207,15 @@ export const [InventoryProvider, useInventory] = createContextHook(() => {
     );
   }, [items]);
 
+  // Manuális frissítés funkció
+  const refreshInventory = useCallback(() => {
+    loadInventory();
+  }, [loadInventory]);
+
   return useMemo(() => ({
     items,
     isLoading,
+    lastSync,
     addItem,
     updateItem,
     deleteItem,
@@ -139,5 +228,6 @@ export const [InventoryProvider, useInventory] = createContextHook(() => {
     restockByBarcode,
     useItemByBarcode,
     searchItems,
-  }), [items, isLoading, addItem, updateItem, deleteItem, restockItem, useItem, getLowStockItems, getItemsByCategory, getTotalValue, findItemByBarcode, restockByBarcode, useItemByBarcode, searchItems]);
+    refreshInventory,
+  }), [items, isLoading, lastSync, addItem, updateItem, deleteItem, restockItem, useItem, getLowStockItems, getItemsByCategory, getTotalValue, findItemByBarcode, restockByBarcode, useItemByBarcode, searchItems, refreshInventory]);
 });

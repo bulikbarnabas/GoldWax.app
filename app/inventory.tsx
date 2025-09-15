@@ -24,6 +24,7 @@ import {
   Trash2,
   Scan,
   Camera,
+  RefreshCw,
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useInventory } from '@/hooks/use-inventory';
@@ -49,6 +50,7 @@ export default function InventoryScreen() {
   const router = useRouter();
   const { 
     items, 
+    lastSync,
     addItem, 
     updateItem, 
     deleteItem, 
@@ -60,7 +62,8 @@ export default function InventoryScreen() {
     findItemByBarcode,
     restockByBarcode,
     useItemByBarcode,
-    searchItems
+    searchItems,
+    refreshInventory
   } = useInventory();
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -77,6 +80,7 @@ export default function InventoryScreen() {
   const [cameraModalVisible, setCameraModalVisible] = useState(false);
   const [cameraAction, setCameraAction] = useState<'restock' | 'use'>('restock');
   const [cameraQuantity, setCameraQuantity] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -265,9 +269,33 @@ export default function InventoryScreen() {
     setCameraModalVisible(false);
   };
 
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await refreshInventory();
+    setTimeout(() => setIsRefreshing(false), 500);
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <View style={styles.header}>
+        <View style={styles.headerTop}>
+          <Text style={styles.headerTitle}>Készletkezelés</Text>
+          <TouchableOpacity 
+            style={[styles.refreshButton, isRefreshing && styles.refreshButtonActive]}
+            onPress={handleRefresh}
+            disabled={isRefreshing}
+          >
+            <RefreshCw size={20} color={isRefreshing ? '#8B4B6B' : '#6B7280'} />
+            <Text style={styles.refreshText}>
+              {isRefreshing ? 'Frissítés...' : 'Frissítés'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+        
+        <Text style={styles.lastSyncText}>
+          Utolsó szinkronizáció: {lastSync.toLocaleTimeString('hu-HU')}
+        </Text>
+
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
             <Package size={20} color="#8B4B6B" />
@@ -1273,5 +1301,38 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     marginTop: 8,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold' as const,
+    color: '#1F2937',
+  },
+  refreshButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+  },
+  refreshButtonActive: {
+    backgroundColor: '#FDF2F8',
+  },
+  refreshText: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500' as const,
+  },
+  lastSyncText: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginBottom: 16,
   },
 });
