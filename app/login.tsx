@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/hooks/use-auth';
-import { User, Lock } from 'lucide-react-native';
+import { User, Lock, Eye, EyeOff } from 'lucide-react-native';
 import { Colors } from '@/constants/colors';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -21,6 +21,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const { login, logout } = useAuth();
   const [errorMessage, setErrorMessage] = useState('');
@@ -43,15 +44,8 @@ export default function LoginScreen() {
     setIsLoading(false);
     
     if (success) {
-      setTimeout(() => {
-        // Ellenőrizzük a felhasználó szerepkörét a bejelentkezés után
-        const userRole = email.includes('admin') ? 'admin' : 'employee';
-        if (userRole === 'admin') {
-          router.replace('/(tabs)/dashboard');
-        } else {
-          router.replace('/(tabs)/services');
-        }
-      }, 100);
+      // Mindig a szolgáltatások oldalra irányítunk
+      router.replace('/(tabs)/services');
     } else {
       setErrorMessage('Hibás email vagy jelszó!');
     }
@@ -83,12 +77,6 @@ export default function LoginScreen() {
           </LinearGradient>
 
           <View style={styles.form}>
-            <View style={styles.credentialsInfo}>
-              <Text style={styles.credentialsTitle}>Teszt bejelentkezési adatok:</Text>
-              <Text style={styles.credentialsText}>Admin: admin@goldwax.hu / admin123</Text>
-              <Text style={styles.credentialsText}>Dolgozó: dolgozo1@goldwax.hu / dolgozo123</Text>
-            </View>
-            
             {errorMessage ? (
               <View style={styles.errorContainer}>
                 <Text style={styles.errorText}>{errorMessage}</Text>
@@ -114,10 +102,20 @@ export default function LoginScreen() {
                 placeholder="Jelszó"
                 value={password}
                 onChangeText={setPassword}
-                secureTextEntry
+                secureTextEntry={!showPassword}
                 autoCapitalize="none"
                 editable={!isLoading}
               />
+              <TouchableOpacity
+                onPress={() => setShowPassword(!showPassword)}
+                style={styles.eyeButton}
+              >
+                {showPassword ? (
+                  <EyeOff size={20} color="#666" />
+                ) : (
+                  <Eye size={20} color="#666" />
+                )}
+              </TouchableOpacity>
             </View>
 
             <TouchableOpacity
@@ -260,25 +258,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
   },
-  credentialsInfo: {
-    backgroundColor: Colors.gold.light,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: Colors.gold.main,
-  },
-  credentialsTitle: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-    color: Colors.text,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  credentialsText: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: 2,
+  eyeButton: {
+    padding: 8,
   },
 });
