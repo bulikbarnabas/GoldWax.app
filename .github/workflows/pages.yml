@@ -40,6 +40,20 @@ jobs:
           rm -rf .expo
           rm -rf node_modules/.cache
 
+      - name: Configure Metro for web
+        run: |
+          # Create metro.config.js to enable web platform
+          cat > metro.config.js << 'EOF'
+          const { getDefaultConfig } = require('expo/metro-config');
+          
+          const config = getDefaultConfig(__dirname);
+          
+          // Enable web platform
+          config.resolver.platforms = ['ios', 'android', 'native', 'web'];
+          
+          module.exports = config;
+          EOF
+          
       - name: Build for web
         run: |
           # Set environment variables for GitHub Pages
