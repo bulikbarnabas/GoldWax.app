@@ -51,6 +51,14 @@ jobs:
           // Enable web platform
           config.resolver.platforms = ['ios', 'android', 'native', 'web'];
           
+          // Ensure web platform is supported in transformer
+          config.transformer.platforms = {
+            ...config.transformer.platforms,
+            web: {
+              ...config.transformer.platforms?.web,
+            }
+          };
+          
           module.exports = config;
           EOF
           
@@ -62,8 +70,16 @@ jobs:
           export GITHUB_PAGES=true
           export GITHUB_REPOSITORY="${{ github.repository }}"
           
-          # Build the web app
-          npx expo export -p web --output-dir dist
+          # Use expo build:web which uses webpack
+          npx expo build:web
+          
+          # Move web-build to dist
+          if [ -d "web-build" ]; then
+            mv web-build dist
+          else
+            echo "web-build directory not found, trying alternative build..."
+            npx expo export:web --output-dir dist
+          fi
           
           echo "Build completed, checking output..."
           ls -la dist/
