@@ -31,66 +31,6 @@ const defaultUsers: User[] = [
   }
 ];
 
-// Universal storage that works across all browsers and platforms
-const universalStorage = {
-  async getItem(key: string): Promise<string | null> {
-    try {
-      if (Platform.OS === 'web') {
-        // Use only localStorage for consistency
-        if (typeof window !== 'undefined' && window.localStorage) {
-          const value = window.localStorage.getItem(key);
-          return value && value !== 'undefined' ? value : null;
-        }
-        return null;
-      }
-      return await AsyncStorage.getItem(key);
-    } catch (error) {
-      console.error('Storage getItem error:', error);
-      return null;
-    }
-  },
-
-  async setItem(key: string, value: string): Promise<void> {
-    try {
-      if (Platform.OS === 'web') {
-        if (typeof window !== 'undefined' && window.localStorage) {
-          window.localStorage.setItem(key, value);
-          // Trigger storage event for other tabs
-          window.dispatchEvent(new StorageEvent('storage', {
-            key,
-            newValue: value,
-            url: window.location.href
-          }));
-        }
-      } else {
-        await AsyncStorage.setItem(key, value);
-      }
-    } catch (error) {
-      console.error('Storage setItem error:', error);
-    }
-  },
-
-  async removeItem(key: string): Promise<void> {
-    try {
-      if (Platform.OS === 'web') {
-        if (typeof window !== 'undefined' && window.localStorage) {
-          window.localStorage.removeItem(key);
-          // Trigger storage event for other tabs
-          window.dispatchEvent(new StorageEvent('storage', {
-            key,
-            newValue: null,
-            url: window.location.href
-          }));
-        }
-      } else {
-        await AsyncStorage.removeItem(key);
-      }
-    } catch (error) {
-      console.error('Storage removeItem error:', error);
-    }
-  }
-};
-
 export const [AuthProvider, useAuth] = createContextHook(() => {
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
@@ -98,111 +38,97 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   });
   const [users, setUsers] = useState<User[]>(defaultUsers);
   const [isLoading, setIsLoading] = useState(true);
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  const loadAuthState = useCallback(async () => {
-    try {
-      const stored = await universalStorage.getItem(STORAGE_KEY);
-      if (stored && stored !== 'undefined') {
-        const parsedAuth = JSON.parse(stored);
-        // Validate that the user still exists in the users list
-        if (parsedAuth.user && parsedAuth.user.id) {
-          const userExists = users.some(u => u.id === parsedAuth.user.id);
-          if (userExists) {
-            setAuthState(parsedAuth);
-          } else {
-            // User no longer exists, clear auth
-            await universalStorage.removeItem(STORAGE_KEY);
-            setAuthState({ user: null, isAuthenticated: false });
+  // Load auth state only once on mount
+  useEffect(() => {
+    if (isInitialized) return;
+    
+    const initAuth = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Load users
+        if (Platform.OS === 'web') {
+          if (typeof window !== 'undefined' && window.localStorage) {
+            const storedUsers = window.localStorage.getItem(USERS_KEY);
+            if (storedUsers) {
+              try {
+                const parsedUsers = JSON.parse(storedUsers);
+                setUsers(parsedUsers);
+              } catch {
+                setUsers(defaultUsers);
+              }
+            }
+          }
+        } else {
+          try {
+            const storedUsers = await AsyncStorage.getItem(USERS_KEY);
+            if (storedUsers) {
+              const parsedUsers = JSON.parse(storedUsers);
+              setUsers(parsedUsers);
+            }
+          } catch {
+            setUsers(defaultUsers);
           }
         }
-      }
-    } catch (error) {
-      console.error('Error loading auth state:', error);
-      // Clear potentially corrupted auth state
-      await universalStorage.removeItem(STORAGE_KEY);
-      setAuthState({ user: null, isAuthenticated: false });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [users]);
-
-  const loadUsers = useCallback(async () => {
-    try {
-      const stored = await universalStorage.getItem(USERS_KEY);
-      if (stored) {
-        const parsedUsers = JSON.parse(stored);
-        // Ensure default users are always present
-        const mergedUsers = [...defaultUsers];
-        parsedUsers.forEach((user: User) => {
-          const existingIndex = mergedUsers.findIndex(u => u.id === user.id);
-          if (existingIndex >= 0) {
-            mergedUsers[existingIndex] = user;
-          } else {
-            mergedUsers.push(user);
+        
+        // Load auth state
+        if (Platform.OS === 'web') {
+          if (typeof window !== 'undefined' && window.localStorage) {
+            const stored = window.localStorage.getItem(STORAGE_KEY);
+            if (stored && stored !== 'undefined') {
+              try {
+                const parsedAuth = JSON.parse(stored);
+                if (parsedAuth.user && parsedAuth.isAuthenticated) {
+                  setAuthState(parsedAuth);
+                }
+              } catch {
+                // Invalid data, ignore
+              }
+            }
           }
-        });
-        setUsers(mergedUsers);
-        await universalStorage.setItem(USERS_KEY, JSON.stringify(mergedUsers));
-      } else {
-        setUsers(defaultUsers);
-        await universalStorage.setItem(USERS_KEY, JSON.stringify(defaultUsers));
+        } else {
+          try {
+            const stored = await AsyncStorage.getItem(STORAGE_KEY);
+            if (stored) {
+              const parsedAuth = JSON.parse(stored);
+              if (parsedAuth.user && parsedAuth.isAuthenticated) {
+                setAuthState(parsedAuth);
+              }
+            }
+          } catch {
+            // Invalid data, ignore
+          }
+        }
+      } catch (error) {
+        console.error('Init auth error:', error);
+      } finally {
+        setIsLoading(false);
+        setIsInitialized(true);
       }
-    } catch (error) {
-      console.error('Error loading users:', error);
-      // Fallback to default users
-      setUsers(defaultUsers);
-    }
-  }, []);
-
-  useEffect(() => {
-    // Felhasználók listája és mentett bejelentkezés betöltése
-    const initAuth = async () => {
-      await loadUsers();
     };
+    
     initAuth();
-  }, [loadUsers]);
-
-  useEffect(() => {
-    if (users.length > 0) {
-      loadAuthState();
-    }
-  }, [users, loadAuthState]);
+  }, [isInitialized]);
 
 
 
   const login = useCallback(async (email: string, password: string): Promise<boolean> => {
     try {
-      console.log('Login attempt started for:', email);
-      
-      // Input validation
       if (!email || !password) {
-        console.log('Login failed: Missing email or password');
         return false;
       }
       
-      // Trim whitespace and normalize email
       const normalizedEmail = email.trim().toLowerCase();
       const normalizedPassword = password.trim();
       
-      // Additional validation
-      if (normalizedEmail.length === 0 || normalizedPassword.length === 0) {
-        console.log('Login failed: Empty email or password after trim');
-        return false;
-      }
-      
-      console.log('Searching for user with email:', normalizedEmail);
-      console.log('Available users:', users.map(u => ({ email: u.email.toLowerCase(), role: u.role })));
-      
-      const user = users.find(u => {
-        const userEmailNormalized = u.email.toLowerCase().trim();
-        const passwordMatch = u.password === normalizedPassword;
-        console.log(`Checking user ${userEmailNormalized} vs ${normalizedEmail}, password match: ${passwordMatch}`);
-        return userEmailNormalized === normalizedEmail && passwordMatch;
-      });
+      const user = users.find(u => 
+        u.email.toLowerCase() === normalizedEmail && 
+        u.password === normalizedPassword
+      );
       
       if (user) {
-        console.log('User found, creating auth state for:', user.email);
-        
         const newAuthState = {
           user: {
             id: user.id,
@@ -214,26 +140,20 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
           isAuthenticated: true
         };
         
-        // Update state immediately
         setAuthState(newAuthState);
         
-        // Save to storage with error handling
-        try {
-          await universalStorage.setItem(STORAGE_KEY, JSON.stringify(newAuthState));
-          console.log('Auth state saved to storage successfully');
-        } catch (storageError) {
-          console.warn('Failed to save auth state to storage:', storageError);
-          // Continue anyway, the in-memory state is set
+        // Save to storage
+        if (Platform.OS === 'web') {
+          if (typeof window !== 'undefined' && window.localStorage) {
+            window.localStorage.setItem(STORAGE_KEY, JSON.stringify(newAuthState));
+          }
+        } else {
+          await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newAuthState));
         }
         
-        console.log('Login successful for user:', user.email, 'Role:', user.role);
-        
-        // Force a delay to ensure all state updates are processed
-        await new Promise(resolve => setTimeout(resolve, 150));
         return true;
       }
       
-      console.log('Login failed: No matching user found for:', normalizedEmail);
       return false;
     } catch (error) {
       console.error('Login error:', error);
@@ -243,15 +163,18 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
   const logout = useCallback(async () => {
     try {
-      console.log('Logging out user');
-      const newAuthState = {
+      setAuthState({
         user: null,
         isAuthenticated: false
-      };
-      setAuthState(newAuthState);
-      await universalStorage.removeItem(STORAGE_KEY);
+      });
       
-      console.log('Logout successful');
+      if (Platform.OS === 'web') {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          window.localStorage.removeItem(STORAGE_KEY);
+        }
+      } else {
+        await AsyncStorage.removeItem(STORAGE_KEY);
+      }
     } catch (error) {
       console.error('Logout error:', error);
     }
@@ -269,7 +192,15 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
     const updatedUsers = [...users, user];
     setUsers(updatedUsers);
-    await universalStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
+    
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
+      }
+    } else {
+      await AsyncStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
+    }
+    
     return true;
   }, [authState.user?.role, users]);
 
@@ -282,14 +213,28 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       u.id === userId ? { ...u, ...updates } : u
     );
     setUsers(updatedUsers);
-    await universalStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
+    
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
+      }
+    } else {
+      await AsyncStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
+    }
     
     if (authState.user?.id === userId) {
       const updatedUser = updatedUsers.find(u => u.id === userId);
       if (updatedUser) {
         const newAuthState = { ...authState, user: updatedUser };
         setAuthState(newAuthState);
-        await universalStorage.setItem(STORAGE_KEY, JSON.stringify(newAuthState));
+        
+        if (Platform.OS === 'web') {
+          if (typeof window !== 'undefined' && window.localStorage) {
+            window.localStorage.setItem(STORAGE_KEY, JSON.stringify(newAuthState));
+          }
+        } else {
+          await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newAuthState));
+        }
       }
     }
     
@@ -304,10 +249,15 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
       const updatedUsers = users.filter(u => u.id !== userId);
       setUsers(updatedUsers);
-      await universalStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
       
-      // Force a small delay to ensure state is updated
-      await new Promise(resolve => setTimeout(resolve, 100));
+      if (Platform.OS === 'web') {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          window.localStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
+        }
+      } else {
+        await AsyncStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
+      }
+      
       return true;
     } catch (error) {
       console.error('Delete user error:', error);

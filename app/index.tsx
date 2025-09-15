@@ -9,7 +9,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Clock, Users, Star, MapPin, Phone, ChevronRight, Sparkles } from 'lucide-react-native';
+import { Clock, Users, Star, MapPin, Phone, ChevronRight, Sparkles, Settings } from 'lucide-react-native';
 import { Colors } from '@/constants/colors';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -29,14 +29,10 @@ export default function WelcomeScreen() {
   // Auto-navigate if already authenticated
   useEffect(() => {
     if (isAuthenticated && user) {
-      const timer = setTimeout(() => {
-        const targetRoute = user.role === 'admin' ? '/(tabs)/dashboard' : '/(tabs)/services';
-        router.replace(targetRoute);
-      }, 1500);
-      
-      return () => clearTimeout(timer);
+      const targetRoute = user.role === 'admin' ? '/(tabs)/dashboard' : '/(tabs)/services';
+      router.replace(targetRoute);
     }
-  }, [isAuthenticated, user, router]);
+  }, [isAuthenticated, user]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -142,6 +138,14 @@ export default function WelcomeScreen() {
               </TouchableOpacity>
             </View>
           </View>
+          
+          <TouchableOpacity 
+            style={styles.resetLink}
+            onPress={() => router.push('/reset-storage')}
+          >
+            <Settings size={16} color={Colors.textSecondary} />
+            <Text style={styles.resetLinkText}>Adatok törlése</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -366,6 +370,17 @@ const styles = StyleSheet.create({
   },
   statusErrorText: {
     color: '#ef4444',
+  },
+  resetLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 8,
+  },
+  resetLinkText: {
+    fontSize: 12,
+    color: Colors.textSecondary,
   },
 });
 

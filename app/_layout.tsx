@@ -26,6 +26,7 @@ function RootLayoutNav() {
       <Stack.Screen name="inventory" options={{ title: "Készlet" }} />
       <Stack.Screen name="service-management" options={{ title: "Szolgáltatás kezelés" }} />
       <Stack.Screen name="barcode-scanner" options={{ presentation: "modal", headerShown: false }} />
+      <Stack.Screen name="reset-storage" options={{ presentation: "modal", title: "Adatok törlése" }} />
       <Stack.Screen name="+not-found" options={{ headerShown: false }} />
     </Stack>
   );
