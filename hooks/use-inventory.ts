@@ -5,7 +5,7 @@ import { Inventory } from '@/types/salon';
 import { Platform, AppState, AppStateStatus } from 'react-native';
 
 const INVENTORY_STORAGE_KEY = 'salon_inventory';
-const SYNC_INTERVAL = 5000; // 5 másodperc
+const SYNC_INTERVAL = 2000; // 2 másodperc - gyorsabb szinkronizáció
 
 export const [InventoryProvider, useInventory] = createContextHook(() => {
   const [items, setItems] = useState<Inventory[]>([]);
@@ -41,36 +41,33 @@ export const [InventoryProvider, useInventory] = createContextHook(() => {
 
     // Rendszeres szinkronizáció beállítása
     if (Platform.OS === 'web') {
+      // Gyorsabb szinkronizáció
       syncIntervalRef.current = setInterval(() => {
         loadInventory();
       }, SYNC_INTERVAL);
 
       // Storage esemény figyelése (más tabok változásai)
       const handleStorageChange = (e: StorageEvent) => {
-        if (e.key === INVENTORY_STORAGE_KEY && e.newValue) {
-          try {
-            const parsedItems = JSON.parse(e.newValue);
-            const processedItems = parsedItems.map((item: any) => ({
-              ...item,
-              lastRestocked: item.lastRestocked ? new Date(item.lastRestocked) : undefined,
-            }));
-            setItems(processedItems);
-            setLastSync(new Date());
-            console.log('Inventory synced from another tab');
-          } catch (error) {
-            console.error('Error syncing from storage event:', error);
-          }
+        if (e.key === INVENTORY_STORAGE_KEY) {
+          loadInventory(); // Egyszerűbb megközelítés - csak újratöltjük
         }
       };
 
       window.addEventListener('storage', handleStorageChange);
 
-      // Focus esemény figyelése
+      // Focus és visibility change esemény figyelése
       const handleFocus = () => {
         loadInventory();
       };
 
+      const handleVisibilityChange = () => {
+        if (!document.hidden) {
+          loadInventory();
+        }
+      };
+
       window.addEventListener('focus', handleFocus);
+      document.addEventListener('visibilitychange', handleVisibilityChange);
 
       return () => {
         if (syncIntervalRef.current) {
@@ -78,6 +75,7 @@ export const [InventoryProvider, useInventory] = createContextHook(() => {
         }
         window.removeEventListener('storage', handleStorageChange);
         window.removeEventListener('focus', handleFocus);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
       };
     } else {
       // Mobil app state változás figyelése
@@ -91,8 +89,16 @@ export const [InventoryProvider, useInventory] = createContextHook(() => {
         appStateRef.current = nextAppState;
       });
 
+      // Mobil esetén is rendszeres szinkronizáció
+      syncIntervalRef.current = setInterval(() => {
+        loadInventory();
+      }, SYNC_INTERVAL * 2); // Mobilon ritkábban
+
       return () => {
         subscription.remove();
+        if (syncIntervalRef.current) {
+          clearInterval(syncIntervalRef.current);
+        }
       };
     }
   }, [loadInventory]);

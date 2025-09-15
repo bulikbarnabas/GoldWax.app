@@ -31,26 +31,16 @@ const defaultUsers: User[] = [
   }
 ];
 
-// Simplified cross-browser storage
-const simpleStorage = {
+// Universal storage that works across all browsers and platforms
+const universalStorage = {
   async getItem(key: string): Promise<string | null> {
     try {
       if (Platform.OS === 'web') {
-        // Try multiple storage methods
-        let value = null;
-        
-        // Try localStorage
-        try {
-          value = localStorage.getItem(key);
-          if (value && value !== 'undefined') return value;
-        } catch (e) {}
-        
-        // Try sessionStorage
-        try {
-          value = sessionStorage.getItem(key);
-          if (value && value !== 'undefined') return value;
-        } catch (e) {}
-        
+        // Use only localStorage for consistency
+        if (typeof window !== 'undefined' && window.localStorage) {
+          const value = window.localStorage.getItem(key);
+          return value && value !== 'undefined' ? value : null;
+        }
         return null;
       }
       return await AsyncStorage.getItem(key);
@@ -63,20 +53,14 @@ const simpleStorage = {
   async setItem(key: string, value: string): Promise<void> {
     try {
       if (Platform.OS === 'web') {
-        // Try localStorage first
-        try {
-          localStorage.setItem(key, value);
-          return;
-        } catch (e) {
-          console.warn('localStorage failed, trying sessionStorage');
-        }
-        
-        // Fallback to sessionStorage
-        try {
-          sessionStorage.setItem(key, value);
-          return;
-        } catch (e) {
-          console.warn('All storage methods failed');
+        if (typeof window !== 'undefined' && window.localStorage) {
+          window.localStorage.setItem(key, value);
+          // Trigger storage event for other tabs
+          window.dispatchEvent(new StorageEvent('storage', {
+            key,
+            newValue: value,
+            url: window.location.href
+          }));
         }
       } else {
         await AsyncStorage.setItem(key, value);
@@ -89,12 +73,15 @@ const simpleStorage = {
   async removeItem(key: string): Promise<void> {
     try {
       if (Platform.OS === 'web') {
-        try {
-          localStorage.removeItem(key);
-        } catch (e) {}
-        try {
-          sessionStorage.removeItem(key);
-        } catch (e) {}
+        if (typeof window !== 'undefined' && window.localStorage) {
+          window.localStorage.removeItem(key);
+          // Trigger storage event for other tabs
+          window.dispatchEvent(new StorageEvent('storage', {
+            key,
+            newValue: null,
+            url: window.location.href
+          }));
+        }
       } else {
         await AsyncStorage.removeItem(key);
       }
@@ -114,7 +101,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
   const loadAuthState = useCallback(async () => {
     try {
-      const stored = await simpleStorage.getItem(STORAGE_KEY);
+      const stored = await universalStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsedAuth = JSON.parse(stored);
         // Validate that the user still exists in the users list
@@ -124,14 +111,14 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
             setAuthState(parsedAuth);
           } else {
             // User no longer exists, clear auth
-            await simpleStorage.removeItem(STORAGE_KEY);
+            await universalStorage.removeItem(STORAGE_KEY);
           }
         }
       }
     } catch (error) {
       console.error('Error loading auth state:', error);
       // Clear potentially corrupted auth state
-      await simpleStorage.removeItem(STORAGE_KEY);
+      await universalStorage.removeItem(STORAGE_KEY);
     } finally {
       setIsLoading(false);
     }
@@ -139,7 +126,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
   const loadUsers = useCallback(async () => {
     try {
-      const stored = await simpleStorage.getItem(USERS_KEY);
+      const stored = await universalStorage.getItem(USERS_KEY);
       if (stored) {
         const parsedUsers = JSON.parse(stored);
         // Ensure default users are always present
@@ -153,10 +140,10 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
           }
         });
         setUsers(mergedUsers);
-        await simpleStorage.setItem(USERS_KEY, JSON.stringify(mergedUsers));
+        await universalStorage.setItem(USERS_KEY, JSON.stringify(mergedUsers));
       } else {
         setUsers(defaultUsers);
-        await simpleStorage.setItem(USERS_KEY, JSON.stringify(defaultUsers));
+        await universalStorage.setItem(USERS_KEY, JSON.stringify(defaultUsers));
       }
     } catch (error) {
       console.error('Error loading users:', error);
@@ -230,7 +217,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         
         // Save to storage with error handling
         try {
-          await simpleStorage.setItem(STORAGE_KEY, JSON.stringify(newAuthState));
+          await universalStorage.setItem(STORAGE_KEY, JSON.stringify(newAuthState));
           console.log('Auth state saved to storage successfully');
         } catch (storageError) {
           console.warn('Failed to save auth state to storage:', storageError);
@@ -260,7 +247,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         isAuthenticated: false
       };
       setAuthState(newAuthState);
-      await simpleStorage.removeItem(STORAGE_KEY);
+      await universalStorage.removeItem(STORAGE_KEY);
       
       console.log('Logout successful');
     } catch (error) {
@@ -280,7 +267,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
     const updatedUsers = [...users, user];
     setUsers(updatedUsers);
-    await simpleStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
+    await universalStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
     return true;
   }, [authState.user?.role, users]);
 
@@ -293,14 +280,14 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       u.id === userId ? { ...u, ...updates } : u
     );
     setUsers(updatedUsers);
-    await simpleStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
+    await universalStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
     
     if (authState.user?.id === userId) {
       const updatedUser = updatedUsers.find(u => u.id === userId);
       if (updatedUser) {
         const newAuthState = { ...authState, user: updatedUser };
         setAuthState(newAuthState);
-        await simpleStorage.setItem(STORAGE_KEY, JSON.stringify(newAuthState));
+        await universalStorage.setItem(STORAGE_KEY, JSON.stringify(newAuthState));
       }
     }
     
@@ -315,7 +302,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
       const updatedUsers = users.filter(u => u.id !== userId);
       setUsers(updatedUsers);
-      await simpleStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
+      await universalStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
       
       // Force a small delay to ensure state is updated
       await new Promise(resolve => setTimeout(resolve, 100));

@@ -52,17 +52,13 @@ export default function CartScreen() {
     try {
       const payment = await processPayment(paymentMethod, user?.id, user?.name);
       
-      // Megosztási lehetőség megjelenítése
-      setShowSocialShare(true);
-      
-      // Nyugta megjelenítése 2 másodperc múlva
-      setTimeout(() => {
-        router.push({
-          pathname: '/receipt',
-          params: { paymentId: payment.id }
-        });
-      }, 2000);
-    } catch {
+      // Azonnal navigálunk a nyugtához
+      router.push({
+        pathname: '/receipt',
+        params: { paymentId: payment.id }
+      });
+    } catch (error) {
+      console.error('Payment error:', error);
       setErrorMessage('Fizetés feldolgozása sikertelen!');
     }
   };
