@@ -25,10 +25,11 @@ import { useCart } from '@/hooks/use-cart';
 import { useClientStats } from '@/hooks/use-clients';
 import { useInventory } from '@/hooks/use-inventory';
 
-import { router } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/colors';
 
 export default function DashboardScreen() {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { getTodayRevenue, getWeekRevenue, getTodayTransactions } = useCart();

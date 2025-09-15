@@ -15,10 +15,11 @@ import { services, serviceCategories } from '@/constants/services';
 import { useCart } from '@/hooks/use-cart';
 import { useAuth } from '@/hooks/use-auth';
 import { Service } from '@/types/salon';
-import { router } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/colors';
 
 export default function ServicesScreen() {
+  const router = useRouter();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');

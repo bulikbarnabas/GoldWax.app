@@ -1,6 +1,6 @@
 import createContextHook from '@nkzw/create-context-hook';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+
 import { Inventory } from '@/types/salon';
 import { Platform, AppState, AppStateStatus } from 'react-native';
 
@@ -14,10 +14,26 @@ export const [InventoryProvider, useInventory] = createContextHook(() => {
   const syncIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const appStateRef = useRef(AppState.currentState);
 
+  const getStorage = useCallback(() => {
+    if (Platform.OS === 'web') {
+      return {
+        getItem: (key: string) => Promise.resolve(localStorage.getItem(key)),
+        setItem: (key: string, value: string) => {
+          localStorage.setItem(key, value);
+          return Promise.resolve();
+        }
+      };
+    } else {
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      return AsyncStorage;
+    }
+  }, []);
+
   // Készlet betöltése
   const loadInventory = useCallback(async () => {
     try {
-      const stored = await AsyncStorage.getItem(INVENTORY_STORAGE_KEY);
+      const storage = getStorage();
+      const stored = await storage.getItem(INVENTORY_STORAGE_KEY);
       if (stored) {
         const parsedItems = JSON.parse(stored);
         const processedItems = parsedItems.map((item: any) => ({
@@ -33,7 +49,7 @@ export const [InventoryProvider, useInventory] = createContextHook(() => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [getStorage]);
 
   // Automatikus szinkronizáció
   useEffect(() => {
@@ -107,8 +123,9 @@ export const [InventoryProvider, useInventory] = createContextHook(() => {
 
   const saveInventory = useCallback(async (updatedItems: Inventory[]) => {
     try {
+      const storage = getStorage();
       const dataToSave = JSON.stringify(updatedItems);
-      await AsyncStorage.setItem(INVENTORY_STORAGE_KEY, dataToSave);
+      await storage.setItem(INVENTORY_STORAGE_KEY, dataToSave);
       setItems(updatedItems);
       setLastSync(new Date());
       
@@ -126,7 +143,7 @@ export const [InventoryProvider, useInventory] = createContextHook(() => {
     } catch (error) {
       console.error('Error saving inventory:', error);
     }
-  }, []);
+  }, [getStorage]);
 
   const addItem = useCallback((item: Omit<Inventory, 'id'>) => {
     const newItem: Inventory = {

@@ -1,6 +1,6 @@
 import createContextHook from '@nkzw/create-context-hook';
 import { useState, useEffect, useMemo } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import { Client } from '@/types/salon';
 
 const CLIENTS_STORAGE_KEY = 'salon_clients';
@@ -13,9 +13,25 @@ export const [ClientsProvider, useClients] = createContextHook(() => {
     loadClients();
   }, []);
 
+  const getStorage = () => {
+    if (Platform.OS === 'web') {
+      return {
+        getItem: (key: string) => Promise.resolve(localStorage.getItem(key)),
+        setItem: (key: string, value: string) => {
+          localStorage.setItem(key, value);
+          return Promise.resolve();
+        }
+      };
+    } else {
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      return AsyncStorage;
+    }
+  };
+
   const loadClients = async () => {
     try {
-      const stored = await AsyncStorage.getItem(CLIENTS_STORAGE_KEY);
+      const storage = getStorage();
+      const stored = await storage.getItem(CLIENTS_STORAGE_KEY);
       if (stored) {
         const parsedClients = JSON.parse(stored);
         setClients(parsedClients.map((c: any) => ({
@@ -34,7 +50,8 @@ export const [ClientsProvider, useClients] = createContextHook(() => {
 
   const saveClients = async (updatedClients: Client[]) => {
     try {
-      await AsyncStorage.setItem(CLIENTS_STORAGE_KEY, JSON.stringify(updatedClients));
+      const storage = getStorage();
+      await storage.setItem(CLIENTS_STORAGE_KEY, JSON.stringify(updatedClients));
       setClients(updatedClients);
     } catch (error) {
       console.error('Error saving clients:', error);

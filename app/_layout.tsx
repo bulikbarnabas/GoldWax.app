@@ -2,13 +2,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, Component, ErrorInfo, ReactNode } from "react";
-import { StyleSheet, Platform, View, Text } from "react-native";
+import { StyleSheet, Platform, View, Text, TouchableOpacity } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { CartProvider } from "@/hooks/use-cart";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ClientsProvider } from "@/hooks/use-clients";
 import { InventoryProvider } from "@/hooks/use-inventory";
-import { trpc, trpcClient } from "@/lib/trpc";
+// import { trpc, trpcClient } from "@/lib/trpc";
 
 // Web-specific error boundary
 class WebErrorBoundary extends Component<
@@ -46,28 +46,20 @@ class WebErrorBoundary extends Component<
   render() {
     if (this.state.hasError) {
       return (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-          <Text style={{ fontSize: 18, marginBottom: 10, textAlign: 'center' }}>
+        <View style={errorStyles.container}>
+          <Text style={errorStyles.title}>
             Hiba történt az alkalmazásban
           </Text>
-          <Text style={{ fontSize: 14, color: '#666', textAlign: 'center' }}>
+          <Text style={errorStyles.message}>
             Kérjük frissítse az oldalt vagy próbálja újra később.
           </Text>
           {Platform.OS === 'web' && (
-            <button 
-              onClick={() => window.location.reload()} 
-              style={{
-                marginTop: 20,
-                padding: '10px 20px',
-                backgroundColor: '#D4AF37',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer'
-              }}
+            <TouchableOpacity 
+              style={errorStyles.button}
+              onPress={() => window.location.reload()}
             >
-              Oldal frissítése
-            </button>
+              <Text style={errorStyles.buttonText}>Oldal frissítése</Text>
+            </TouchableOpacity>
           )}
         </View>
       );
@@ -108,66 +100,22 @@ function RootLayoutNav() {
 export default function RootLayout() {
   useEffect(() => {
     SplashScreen.hideAsync();
-    
-    // Web-specific initialization
-    if (Platform.OS === 'web') {
-      console.log('Initializing web app...');
-      console.log('Current URL:', window.location.href);
-      console.log('Current pathname:', window.location.pathname);
-      console.log('Base path env:', process.env.EXPO_PUBLIC_BASE_PATH);
-      
-      // Handle GitHub Pages routing
-      const currentPath = window.location.pathname;
-      const isGitHubPages = window.location.hostname.includes('github.io');
-      
-      if (isGitHubPages) {
-        console.log('Running on GitHub Pages');
-        
-        // Extract repository name from URL
-        const pathParts = currentPath.split('/').filter(Boolean);
-        const repoName = pathParts[0];
-        
-        if (repoName && currentPath === `/${repoName}`) {
-          // Redirect to the app root with trailing slash
-          console.log('Redirecting to app root with trailing slash');
-          window.location.replace(`/${repoName}/`);
-          return;
-        }
-      }
-      
-      // Set up error handling for navigation
-      const handleError = (event: ErrorEvent) => {
-        console.error('Web error:', event.error);
-        if (event.error?.message?.includes('router') || event.error?.message?.includes('navigation')) {
-          console.log('Navigation error detected, reloading...');
-          setTimeout(() => window.location.reload(), 1000);
-        }
-      };
-      
-      window.addEventListener('error', handleError);
-      
-      return () => {
-        window.removeEventListener('error', handleError);
-      };
-    }
   }, []);
 
   return (
     <WebErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <trpc.Provider client={trpcClient} queryClient={queryClient}>
-          <GestureHandlerRootView style={styles.container}>
-            <AuthProvider>
-              <ClientsProvider>
-                <InventoryProvider>
-                  <CartProvider>
-                    <RootLayoutNav />
-                  </CartProvider>
-                </InventoryProvider>
-              </ClientsProvider>
-            </AuthProvider>
-          </GestureHandlerRootView>
-        </trpc.Provider>
+        <GestureHandlerRootView style={styles.container}>
+          <AuthProvider>
+            <ClientsProvider>
+              <InventoryProvider>
+                <CartProvider>
+                  <RootLayoutNav />
+                </CartProvider>
+              </InventoryProvider>
+            </ClientsProvider>
+          </AuthProvider>
+        </GestureHandlerRootView>
       </QueryClientProvider>
     </WebErrorBoundary>
   );
@@ -176,5 +124,38 @@ export default function RootLayout() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+});
+
+const errorStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: '#f5f5f5',
+  },
+  title: {
+    fontSize: 18,
+    marginBottom: 10,
+    textAlign: 'center',
+    fontWeight: 'bold' as const,
+    color: '#333',
+  },
+  message: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  button: {
+    backgroundColor: '#D4AF37',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  buttonText: {
+    color: 'white',
+    fontWeight: 'bold' as const,
   },
 });
