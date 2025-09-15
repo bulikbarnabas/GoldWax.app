@@ -1,13 +1,80 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect } from "react";
-import { StyleSheet } from "react-native";
+import React, { useEffect, Component, ErrorInfo, ReactNode } from "react";
+import { StyleSheet, Platform, View, Text } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { CartProvider } from "@/hooks/use-cart";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ClientsProvider } from "@/hooks/use-clients";
 import { InventoryProvider } from "@/hooks/use-inventory";
+
+// Web-specific error boundary
+class WebErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean; error?: Error }
+> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('Web Error Boundary caught an error:', error, errorInfo);
+    
+    // Web-specific error handling
+    if (Platform.OS === 'web') {
+      // Try to recover from navigation errors
+      if (error.message.includes('router') || error.message.includes('navigation')) {
+        console.log('Navigation error detected, attempting recovery...');
+        setTimeout(() => {
+          try {
+            window.location.reload();
+          } catch (e) {
+            console.error('Recovery failed:', e);
+          }
+        }, 1000);
+      }
+    }
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <Text style={{ fontSize: 18, marginBottom: 10, textAlign: 'center' }}>
+            Hiba történt az alkalmazásban
+          </Text>
+          <Text style={{ fontSize: 14, color: '#666', textAlign: 'center' }}>
+            Kérjük frissítse az oldalt vagy próbálja újra később.
+          </Text>
+          {Platform.OS === 'web' && (
+            <button 
+              onClick={() => window.location.reload()} 
+              style={{
+                marginTop: 20,
+                padding: '10px 20px',
+                backgroundColor: '#D4AF37',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer'
+              }}
+            >
+              Oldal frissítése
+            </button>
+          )}
+        </View>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -40,22 +107,48 @@ function RootLayoutNav() {
 export default function RootLayout() {
   useEffect(() => {
     SplashScreen.hideAsync();
+    
+    // Web-specific initialization
+    if (Platform.OS === 'web') {
+      // Prevent browser back button issues
+      const handlePopState = (event: PopStateEvent) => {
+        console.log('Browser back/forward detected:', event);
+        // Let Expo Router handle navigation
+      };
+      
+      window.addEventListener('popstate', handlePopState);
+      
+      // Handle browser refresh
+      const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+        // Don't show confirmation dialog for normal navigation
+        return undefined;
+      };
+      
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      
+      return () => {
+        window.removeEventListener('popstate', handlePopState);
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+      };
+    }
   }, []);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <GestureHandlerRootView style={styles.container}>
-        <AuthProvider>
-          <ClientsProvider>
-            <InventoryProvider>
-              <CartProvider>
-                <RootLayoutNav />
-              </CartProvider>
-            </InventoryProvider>
-          </ClientsProvider>
-        </AuthProvider>
-      </GestureHandlerRootView>
-    </QueryClientProvider>
+    <WebErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <GestureHandlerRootView style={styles.container}>
+          <AuthProvider>
+            <ClientsProvider>
+              <InventoryProvider>
+                <CartProvider>
+                  <RootLayoutNav />
+                </CartProvider>
+              </InventoryProvider>
+            </ClientsProvider>
+          </AuthProvider>
+        </GestureHandlerRootView>
+      </QueryClientProvider>
+    </WebErrorBoundary>
   );
 }
 

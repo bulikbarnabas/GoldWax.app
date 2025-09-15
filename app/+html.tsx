@@ -35,28 +35,79 @@ export default function Root({ children }: PropsWithChildren) {
         */}
         <ScrollViewStyleReset />
 
-        {/* Add custom styles for web */}
+        {/* Enhanced web compatibility styles */}
         <style dangerouslySetInnerHTML={{ __html: `
-          body {
+          * {
+            box-sizing: border-box;
+          }
+          html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
             overflow: hidden;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+            text-size-adjust: 100%;
           }
           #root {
             display: flex;
             flex: 1;
             height: 100vh;
+            width: 100vw;
+            position: relative;
           }
-          /* Prevent text selection on buttons */
-          button, a {
+          /* Enhanced button and link styles */
+          button, a, [role="button"] {
             -webkit-user-select: none;
             -moz-user-select: none;
             -ms-user-select: none;
             user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            cursor: pointer;
           }
-          /* Fix for web input focus */
-          input:focus, textarea:focus {
+          /* Better input handling */
+          input, textarea, select {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            border-radius: 0;
+          }
+          input:focus, textarea:focus, select:focus {
             outline: none;
+          }
+          /* Prevent iOS zoom on input focus */
+          @media screen and (-webkit-min-device-pixel-ratio: 0) {
+            input, textarea, select {
+              font-size: 16px !important;
+            }
+          }
+          /* Chrome, Safari, Edge scrollbar */
+          ::-webkit-scrollbar {
+            width: 0px;
+            background: transparent;
+          }
+          /* Firefox scrollbar */
+          * {
+            scrollbar-width: none;
+          }
+          /* Prevent context menu on long press */
+          * {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+          }
+          /* Allow text selection in inputs and text areas */
+          input, textarea, [contenteditable] {
+            -webkit-user-select: text;
+            -khtml-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+            user-select: text;
           }
         `}} />
       </head>
