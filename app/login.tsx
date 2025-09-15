@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/hooks/use-auth';
-import { User, Lock, Eye, EyeOff, Info } from 'lucide-react-native';
+import { User, Lock, Eye, EyeOff } from 'lucide-react-native';
 import { Colors } from '@/constants/colors';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -22,7 +22,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [showTestCredentials, setShowTestCredentials] = useState(false);
+
   const router = useRouter();
   const { login, logout } = useAuth();
   const [errorMessage, setErrorMessage] = useState('');
@@ -32,17 +32,9 @@ export default function LoginScreen() {
     logout();
   }, [logout]);
 
-  const testCredentials = [
-    { id: 'admin', email: 'admin@goldwax.hu', password: 'admin123', role: 'Admin' },
-    { id: 'emp1', email: 'dolgozo1@goldwax.hu', password: 'dolgozo123', role: 'Dolgozó 1' },
-    { id: 'emp2', email: 'dolgozo2@goldwax.hu', password: 'dolgozo456', role: 'Dolgozó 2' }
-  ];
 
-  const fillCredentials = (email: string, password: string) => {
-    setEmail(email);
-    setPassword(password);
-    setShowTestCredentials(false);
-  };
+
+
 
   const handleLogin = async () => {
     setErrorMessage('');
@@ -53,7 +45,7 @@ export default function LoginScreen() {
     }
 
     setIsLoading(true);
-    const success = await login(email, password);
+    const success = await login(email.trim(), password.trim());
     setIsLoading(false);
     
     if (success) {
@@ -148,34 +140,7 @@ export default function LoginScreen() {
               </LinearGradient>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.testCredentialsButton}
-              onPress={() => setShowTestCredentials(!showTestCredentials)}
-            >
-              <Info size={16} color={Colors.primary} />
-              <Text style={styles.testCredentialsButtonText}>
-                {showTestCredentials ? 'Teszt adatok elrejtése' : 'Teszt bejelentkezési adatok'}
-              </Text>
-            </TouchableOpacity>
 
-            {showTestCredentials && (
-              <View style={styles.testCredentialsContainer}>
-                <Text style={styles.testCredentialsTitle}>Teszt fiókok:</Text>
-                {testCredentials.map((cred) => (
-                  <TouchableOpacity
-                    key={cred.id}
-                    style={styles.testCredentialItem}
-                    onPress={() => fillCredentials(cred.email, cred.password)}
-                  >
-                    <View style={styles.testCredentialInfo}>
-                      <Text style={styles.testCredentialRole}>{cred.role}</Text>
-                      <Text style={styles.testCredentialEmail}>{cred.email}</Text>
-                      <Text style={styles.testCredentialPassword}>Jelszó: {cred.password}</Text>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
           </View>
 
         </ScrollView>
@@ -303,57 +268,5 @@ const styles = StyleSheet.create({
   eyeButton: {
     padding: 8,
   },
-  testCredentialsButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 16,
-    padding: 12,
-    borderRadius: 8,
-    backgroundColor: Colors.gold.light,
-  },
-  testCredentialsButtonText: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: Colors.primary,
-    fontWeight: '500' as const,
-  },
-  testCredentialsContainer: {
-    marginTop: 16,
-    padding: 16,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  testCredentialsTitle: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-    color: Colors.text,
-    marginBottom: 12,
-  },
-  testCredentialItem: {
-    backgroundColor: 'white',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  testCredentialInfo: {
-    gap: 4,
-  },
-  testCredentialRole: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-    color: Colors.primary,
-  },
-  testCredentialEmail: {
-    fontSize: 13,
-    color: Colors.text,
-  },
-  testCredentialPassword: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-  },
+
 });
