@@ -111,39 +111,43 @@ export default function RootLayout() {
     
     // Web-specific initialization
     if (Platform.OS === 'web') {
-      // Handle GitHub Pages base path
+      console.log('Initializing web app...');
+      console.log('Current URL:', window.location.href);
+      console.log('Current pathname:', window.location.pathname);
+      console.log('Base path env:', process.env.EXPO_PUBLIC_BASE_PATH);
+      
+      // Handle GitHub Pages routing
       const currentPath = window.location.pathname;
-      const basePath = process.env.EXPO_PUBLIC_BASE_PATH || '';
+      const isGitHubPages = window.location.hostname.includes('github.io');
       
-      console.log('Current path:', currentPath);
-      console.log('Base path:', basePath);
-      
-      // If we're on GitHub Pages and the path doesn't include the base path
-      if (basePath && !currentPath.startsWith(basePath) && currentPath === '/') {
-        console.log('Redirecting to base path:', basePath);
-        window.location.replace(basePath + '/');
-        return;
+      if (isGitHubPages) {
+        console.log('Running on GitHub Pages');
+        
+        // Extract repository name from URL
+        const pathParts = currentPath.split('/').filter(Boolean);
+        const repoName = pathParts[0];
+        
+        if (repoName && currentPath === `/${repoName}`) {
+          // Redirect to the app root with trailing slash
+          console.log('Redirecting to app root with trailing slash');
+          window.location.replace(`/${repoName}/`);
+          return;
+        }
       }
       
-      // Prevent browser back button issues
-      const handlePopState = (event: PopStateEvent) => {
-        console.log('Browser back/forward detected:', event);
-        // Let Expo Router handle navigation
+      // Set up error handling for navigation
+      const handleError = (event: ErrorEvent) => {
+        console.error('Web error:', event.error);
+        if (event.error?.message?.includes('router') || event.error?.message?.includes('navigation')) {
+          console.log('Navigation error detected, reloading...');
+          setTimeout(() => window.location.reload(), 1000);
+        }
       };
       
-      window.addEventListener('popstate', handlePopState);
-      
-      // Handle browser refresh
-      const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-        // Don't show confirmation dialog for normal navigation
-        return undefined;
-      };
-      
-      window.addEventListener('beforeunload', handleBeforeUnload);
+      window.addEventListener('error', handleError);
       
       return () => {
-        window.removeEventListener('popstate', handlePopState);
-        window.removeEventListener('beforeunload', handleBeforeUnload);
+        window.removeEventListener('error', handleError);
       };
     }
   }, []);

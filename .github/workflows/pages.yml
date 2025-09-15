@@ -44,11 +44,12 @@ jobs:
         run: |
           # Set environment variables for GitHub Pages
           export PUBLIC_URL="/${{ github.event.repository.name }}"
+          export EXPO_PUBLIC_BASE_PATH="/${{ github.event.repository.name }}"
           export GITHUB_PAGES=true
           export GITHUB_REPOSITORY="${{ github.repository }}"
           
           # Build the web app
-          npx expo export --platform web --output-dir dist
+          npx expo export --platform web --output-dir dist --base-path "/${{ github.event.repository.name }}"
           
           echo "Build completed, checking output..."
           ls -la dist/
@@ -56,6 +57,7 @@ jobs:
           NODE_ENV: production
           CI: true
           PUBLIC_URL: /${{ github.event.repository.name }}
+          EXPO_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
 
       - name: Add 404 fallback and base path fix
         run: |
@@ -64,6 +66,9 @@ jobs:
           
           # Add .nojekyll to prevent Jekyll processing
           touch dist/.nojekyll
+          
+          # Create a simple test page to verify deployment
+          echo '<!DOCTYPE html><html><head><title>Test</title></head><body><h1>GitHub Pages Test</h1><p>Repository: ${{ github.repository }}</p><p>Base URL: /${{ github.event.repository.name }}/</p><a href="./index.html">Go to App</a></body></html>' > dist/test.html
           
           echo "Files in dist after setup:"
           ls -la dist/

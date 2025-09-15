@@ -32,22 +32,32 @@ export default function WelcomeScreen() {
       // Add a small delay for better UX
       await new Promise(resolve => setTimeout(resolve, 200));
       
+      console.log('Navigation attempt:', { isAuthenticated, userRole: user?.role });
+      
       if (!isAuthenticated) {
+        console.log('Navigating to login');
         router.push('/login');
       } else {
         const targetRoute = user?.role === 'admin' ? '/(tabs)/dashboard' : '/(tabs)/services';
+        console.log('Navigating to:', targetRoute);
         router.push(targetRoute);
       }
     } catch (error) {
       console.error('Navigation error:', error);
-      // Fallback for web with base path support
+      // Fallback navigation for web
       if (Platform.OS === 'web') {
-        const basePath = process.env.EXPO_PUBLIC_BASE_PATH || '';
-        if (!isAuthenticated) {
-          window.location.href = basePath + '/login';
-        } else {
-          const webRoute = user?.role === 'admin' ? '/dashboard' : '/services';
-          window.location.href = basePath + webRoute;
+        console.log('Using fallback navigation');
+        try {
+          if (!isAuthenticated) {
+            window.location.href = './login';
+          } else {
+            const webRoute = user?.role === 'admin' ? './dashboard' : './services';
+            window.location.href = webRoute;
+          }
+        } catch (webError) {
+          console.error('Web navigation fallback failed:', webError);
+          // Last resort - reload the page
+          window.location.reload();
         }
       }
     } finally {
