@@ -5,7 +5,8 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator
+  ActivityIndicator,
+  Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -22,23 +23,38 @@ export default function WelcomeScreen() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout | null = null;
+    
     if (!authLoading) {
       if (isAuthenticated && user) {
-        // Dolgozók menjenek a szolgáltatások oldalra
-        if (user.role === 'employee') {
-          router.replace('/(tabs)/services');
-        }
-        // Admin felhasználók menjenek a dashboard-ra
-        else if (user.role === 'admin') {
-          router.replace('/(tabs)/dashboard');
+        // Web platformon késleltetett navigáció a jobb kompatibilitás érdekében
+        const navigateToApp = () => {
+          if (user.role === 'employee') {
+            router.replace('/(tabs)/services');
+          } else if (user.role === 'admin') {
+            router.replace('/(tabs)/dashboard');
+          }
+        };
+
+        if (Platform.OS === 'web') {
+          // Kis késleltetés a web platformon
+          timeoutId = setTimeout(navigateToApp, 100);
+        } else {
+          navigateToApp();
         }
       }
     }
+    
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
   }, [isAuthenticated, user, router, authLoading]);
 
   const handleEnter = () => {
     setLoading(true);
-    setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       if (!isAuthenticated) {
         router.push('/login');
       } else {
@@ -51,6 +67,9 @@ export default function WelcomeScreen() {
       }
       setLoading(false);
     }, 500);
+    
+    // Cleanup nem szükséges itt, mert a timeout mindig lefut
+    return () => clearTimeout(timeoutId);
   };
 
   return (
