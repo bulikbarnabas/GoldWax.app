@@ -41,7 +41,7 @@ const safeStorage = {
     if (Platform.OS !== 'web') return true;
     
     try {
-      if (typeof window === 'undefined') {
+      if (typeof window === 'undefined' || typeof Storage === 'undefined') {
         return false;
       }
       
@@ -51,15 +51,34 @@ const safeStorage = {
         return false;
       }
       
-      // Test storage functionality
-      const testKey = '__storage_test__' + Date.now();
+      // Test storage functionality with a unique key
+      const testKey = '__gw_storage_test__' + Math.random().toString(36).substr(2, 9);
       storage.setItem(testKey, 'test');
       const result = storage.getItem(testKey);
       storage.removeItem(testKey);
       return result === 'test';
     } catch (e) {
-      // Storage might be blocked by browser settings or incognito mode
+      // Storage might be blocked by browser settings, incognito mode, or quota exceeded
       console.warn('Storage not available:', e);
+      return false;
+    }
+  },
+
+  // Check if sessionStorage is available
+  isSessionStorageAvailable(): boolean {
+    if (Platform.OS !== 'web') return false;
+    
+    try {
+      if (typeof window === 'undefined' || !window.sessionStorage) {
+        return false;
+      }
+      
+      const testKey = '__gw_session_test__' + Math.random().toString(36).substr(2, 9);
+      window.sessionStorage.setItem(testKey, 'test');
+      const result = window.sessionStorage.getItem(testKey);
+      window.sessionStorage.removeItem(testKey);
+      return result === 'test';
+    } catch (e) {
       return false;
     }
   },
@@ -71,65 +90,119 @@ const safeStorage = {
         if (this.isStorageAvailable()) {
           try {
             const value = window.localStorage.getItem(key);
-            if (value !== null) return value;
+            if (value !== null && value !== 'undefined') {
+              // Validate JSON before returning
+              try {
+                JSON.parse(value);
+                return value;
+              } catch (e) {
+                // Invalid JSON, remove it
+                window.localStorage.removeItem(key);
+              }
+            }
           } catch (e) {
             console.warn('localStorage getItem failed:', e);
           }
         }
         
         // Try sessionStorage as fallback
-        try {
-          if (typeof window !== 'undefined' && window.sessionStorage) {
+        if (this.isSessionStorageAvailable()) {
+          try {
             const value = window.sessionStorage.getItem(key);
-            if (value !== null) return value;
+            if (value !== null && value !== 'undefined') {
+              try {
+                JSON.parse(value);
+                return value;
+              } catch (e) {
+                window.sessionStorage.removeItem(key);
+              }
+            }
+          } catch (e) {
+            console.warn('sessionStorage getItem failed:', e);
           }
-        } catch (e) {
-          console.warn('sessionStorage getItem failed:', e);
         }
         
         // Use memory storage as last resort
-        return memoryStorage[key] || null;
+        const memValue = memoryStorage[key];
+        return (memValue && memValue !== 'undefined') ? memValue : null;
       }
       return await AsyncStorage.getItem(key);
     } catch (error) {
       console.error('Storage getItem error:', error);
-      return memoryStorage[key] || null;
+      const memValue = memoryStorage[key];
+      return (memValue && memValue !== 'undefined') ? memValue : null;
     }
   },
 
   async setItem(key: string, value: string): Promise<void> {
     try {
       if (Platform.OS === 'web') {
+        // Validate JSON before storing
+        try {
+          JSON.parse(value);
+        } catch (e) {
+          console.error('Invalid JSON value for key:', key);
+          return;
+        }
+        
         // Always save to memory storage first
         memoryStorage[key] = value;
         
-        // Try localStorage
+        let stored = false;
+        
+        // Try localStorage with quota check
         if (this.isStorageAvailable()) {
           try {
+            // Check available space (rough estimate)
+            const testValue = 'x'.repeat(1024); // 1KB test
+            const testKey = '__gw_quota_test__';
+            window.localStorage.setItem(testKey, testValue);
+            window.localStorage.removeItem(testKey);
+            
+            // If test passed, store the actual value
             window.localStorage.setItem(key, value);
+            stored = true;
           } catch (e) {
-            console.warn('localStorage setItem failed:', e);
+            console.warn('localStorage setItem failed (quota/other):', e);
+            // Try to clear some space by removing old test keys
+            try {
+              for (let i = 0; i < window.localStorage.length; i++) {
+                const storageKey = window.localStorage.key(i);
+                if (storageKey && storageKey.startsWith('__gw_')) {
+                  window.localStorage.removeItem(storageKey);
+                }
+              }
+              // Try again after cleanup
+              window.localStorage.setItem(key, value);
+              stored = true;
+            } catch (e2) {
+              console.warn('localStorage cleanup and retry failed:', e2);
+            }
           }
         }
         
-        // Also try sessionStorage for redundancy
-        try {
-          if (typeof window !== 'undefined' && window.sessionStorage) {
-            window.sessionStorage.setItem(key, value);
-          }
-        } catch (e) {
-          console.warn('sessionStorage setItem failed:', e);
-        }
-        
-        // Dispatch storage event for cross-tab communication
-        if (typeof window !== 'undefined') {
+        // Try sessionStorage as fallback
+        if (!stored && this.isSessionStorageAvailable()) {
           try {
-            window.dispatchEvent(new StorageEvent('storage', {
-              key,
-              newValue: value,
-              url: window.location.href,
-              storageArea: window.localStorage
-            }));
+            window.sessionStorage.setItem(key, value);
+            stored = true;
+          } catch (e) {
+            console.warn('sessionStorage setItem failed:', e);
+          }
+        }
+        
+        // Dispatch storage event for cross-tab communication (only if localStorage worked)
+        if (stored && typeof window !== 'undefined' && this.isStorageAvailable()) {
+          try {
+            // Use setTimeout to avoid blocking
+            setTimeout(() => {
+              window.dispatchEvent(new StorageEvent('storage', {
+                key,
+                newValue: value,
+                url: window.location.href,
+                storageArea: window.localStorage
+              }));
+            }, 0);
           } catch (e) {
             // Ignore event dispatch errors
           }
@@ -139,7 +212,7 @@ const safeStorage = {
       }
     } catch (error) {
       console.error('Storage setItem error:', error);
-      // Still save to memory storage
+      // Still save to memory storage as fallback
       if (Platform.OS === 'web') {
         memoryStorage[key] = value;
       }
@@ -275,33 +348,68 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
   const login = useCallback(async (email: string, password: string): Promise<boolean> => {
     try {
-      console.log('Login attempt:', { email, availableUsers: users.map(u => ({ email: u.email, role: u.role })) });
+      console.log('Login attempt started for:', email);
+      
+      // Input validation
+      if (!email || !password) {
+        console.log('Login failed: Missing email or password');
+        return false;
+      }
       
       // Trim whitespace and normalize email
       const normalizedEmail = email.trim().toLowerCase();
       const normalizedPassword = password.trim();
       
-      const user = users.find(u => 
-        u.email.toLowerCase() === normalizedEmail && 
-        u.password === normalizedPassword
-      );
+      // Additional validation
+      if (normalizedEmail.length === 0 || normalizedPassword.length === 0) {
+        console.log('Login failed: Empty email or password after trim');
+        return false;
+      }
+      
+      console.log('Searching for user with email:', normalizedEmail);
+      console.log('Available users:', users.map(u => ({ email: u.email.toLowerCase(), role: u.role })));
+      
+      const user = users.find(u => {
+        const userEmailNormalized = u.email.toLowerCase().trim();
+        const passwordMatch = u.password === normalizedPassword;
+        console.log(`Checking user ${userEmailNormalized} vs ${normalizedEmail}, password match: ${passwordMatch}`);
+        return userEmailNormalized === normalizedEmail && passwordMatch;
+      });
       
       if (user) {
+        console.log('User found, creating auth state for:', user.email);
+        
         const newAuthState = {
-          user,
+          user: {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            password: user.password
+          },
           isAuthenticated: true
         };
-        setAuthState(newAuthState);
-        await safeStorage.setItem(STORAGE_KEY, JSON.stringify(newAuthState));
-        console.log('Login successful for user:', user.email);
         
-        // Force a small delay to ensure state is updated
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Update state immediately
+        setAuthState(newAuthState);
+        
+        // Save to storage with error handling
+        try {
+          await safeStorage.setItem(STORAGE_KEY, JSON.stringify(newAuthState));
+          console.log('Auth state saved to storage successfully');
+        } catch (storageError) {
+          console.warn('Failed to save auth state to storage:', storageError);
+          // Continue anyway, the in-memory state is set
+        }
+        
+        console.log('Login successful for user:', user.email, 'Role:', user.role);
+        
+        // Force a delay to ensure all state updates are processed
+        await new Promise(resolve => setTimeout(resolve, 150));
         return true;
       }
       
-      console.log('Login failed: Invalid credentials for:', normalizedEmail);
-      console.log('Available users:', users.map(u => ({ email: u.email.toLowerCase(), password: u.password })));
+      console.log('Login failed: No matching user found for:', normalizedEmail);
       return false;
     } catch (error) {
       console.error('Login error:', error);

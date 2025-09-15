@@ -25,30 +25,70 @@ export default function WelcomeScreen() {
   // Eltávolítjuk az automatikus navigációt, ami problémát okozott
   // A felhasználó manuálisan fog belépni a "Belépés" gombbal
 
-  const handleEnter = () => {
+  const handleEnter = async () => {
     setLoading(true);
     
-    // Simplified navigation
-    setTimeout(() => {
+    try {
+      // Add a small delay for better UX
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
       if (Platform.OS === 'web') {
-        // Direct navigation on web
+        // Enhanced web navigation with multiple fallbacks
         if (!isAuthenticated) {
-          window.location.href = '/login';
+          // Try router first, then fallback to window.location
+          try {
+            router.push('/login');
+            setTimeout(() => {
+              if (window.location.pathname === '/') {
+                window.location.href = '/login';
+              }
+            }, 300);
+          } catch (e) {
+            console.warn('Router navigation failed, using window.location:', e);
+            window.location.href = '/login';
+          }
         } else {
           const webRoute = user?.role === 'admin' ? '/dashboard' : '/services';
-          window.location.href = webRoute;
+          try {
+            router.push(webRoute);
+            setTimeout(() => {
+              if (window.location.pathname === '/') {
+                window.location.href = webRoute;
+              }
+            }, 300);
+          } catch (e) {
+            console.warn('Router navigation failed, using window.location:', e);
+            window.location.href = webRoute;
+          }
         }
       } else {
-        // Native navigation
-        if (!isAuthenticated) {
-          router.push('/login');
-        } else {
-          const targetRoute = user?.role === 'admin' ? '/(tabs)/dashboard' : '/(tabs)/services';
-          router.push(targetRoute);
+        // Native navigation with error handling
+        try {
+          if (!isAuthenticated) {
+            router.push('/login');
+          } else {
+            const targetRoute = user?.role === 'admin' ? '/(tabs)/dashboard' : '/(tabs)/services';
+            router.push(targetRoute);
+          }
+        } catch (navError) {
+          console.error('Native navigation error:', navError);
+          // Try alternative navigation method
+          if (!isAuthenticated) {
+            router.replace('/login');
+          } else {
+            const targetRoute = user?.role === 'admin' ? '/(tabs)/dashboard' : '/(tabs)/services';
+            router.replace(targetRoute);
+          }
         }
-        setLoading(false);
       }
-    }, 300);
+    } catch (error) {
+      console.error('Navigation error:', error);
+    } finally {
+      // Reset loading state after a delay
+      setTimeout(() => {
+        setLoading(false);
+      }, 1000);
+    }
   };
 
   return (

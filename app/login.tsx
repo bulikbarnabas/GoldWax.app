@@ -27,9 +27,39 @@ export default function LoginScreen() {
   const { login, logout } = useAuth();
   const [errorMessage, setErrorMessage] = useState('');
 
-  // Clear any existing auth state when component mounts
+  // Clear any existing auth state when component mounts and add web-specific handlers
   React.useEffect(() => {
     logout();
+    
+    // Add web-specific event listeners for better compatibility
+    if (Platform.OS === 'web') {
+      const handleBeforeUnload = () => {
+        // Clear any pending navigation timeouts
+        const highestTimeoutId = setTimeout(() => {}, 0) as unknown as number;
+        for (let i = 0; i < highestTimeoutId; i++) {
+          clearTimeout(i);
+        }
+      };
+      
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible') {
+          // Page became visible, check if we should redirect
+          const currentPath = window.location.pathname;
+          if (currentPath === '/login' && localStorage.getItem('@salon_auth')) {
+            console.log('User appears to be logged in, redirecting...');
+            window.location.href = '/services';
+          }
+        }
+      };
+      
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      
+      return () => {
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      };
+    }
   }, [logout]);
 
 
@@ -39,38 +69,80 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     setErrorMessage('');
     
-    if (!email || !password) {
+    // Input validation
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
+    
+    if (!trimmedEmail || !trimmedPassword) {
       setErrorMessage('Kérjük töltse ki az összes mezőt!');
+      return;
+    }
+
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      setErrorMessage('Kérjük adjon meg egy érvényes email címet!');
       return;
     }
 
     setIsLoading(true);
     
     try {
-      console.log('Starting login process...');
-      const success = await login(email.trim(), password.trim());
+      console.log('Starting login process for:', trimmedEmail);
+      
+      // Add a small delay to ensure UI updates
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      const success = await login(trimmedEmail, trimmedPassword);
       
       if (success) {
-        console.log('Login successful, navigating...');
+        console.log('Login successful, preparing navigation...');
         
-        // Simplified navigation for better compatibility
+        // Enhanced navigation with better error handling
         if (Platform.OS === 'web') {
-          // Use a small delay to ensure state is saved
-          setTimeout(() => {
-            // Use window.location for most reliable navigation on web
+          // Multiple fallback navigation methods for web
+          try {
+            // Method 1: Try router first
+            router.replace('/(tabs)/services');
+            
+            // Method 2: Fallback with window.location after delay
+            setTimeout(() => {
+              if (window.location.pathname === '/login') {
+                console.log('Router navigation may have failed, using window.location');
+                window.location.href = '/services';
+              }
+            }, 200);
+            
+            // Method 3: Ultimate fallback
+            setTimeout(() => {
+              if (window.location.pathname === '/login') {
+                console.log('All navigation methods failed, forcing reload');
+                window.location.reload();
+              }
+            }, 1000);
+          } catch (navError) {
+            console.error('Navigation error:', navError);
+            // Direct navigation as last resort
             window.location.href = '/services';
-          }, 100);
+          }
         } else {
-          // Native navigation
-          router.replace('/(tabs)/services');
+          // Native navigation with error handling
+          try {
+            router.replace('/(tabs)/services');
+          } catch (navError) {
+            console.error('Native navigation error:', navError);
+            // Try alternative navigation
+            router.push('/(tabs)/services');
+          }
         }
       } else {
+        console.log('Login failed: Invalid credentials');
         setErrorMessage('Hibás email vagy jelszó!');
         setIsLoading(false);
       }
     } catch (error) {
       console.error('Login error:', error);
-      setErrorMessage('Bejelentkezési hiba történt!');
+      setErrorMessage('Bejelentkezési hiba történt! Kérjük próbálja újra.');
       setIsLoading(false);
     }
   };
@@ -146,6 +218,8 @@ export default function LoginScreen() {
               style={[styles.loginButton, isLoading && styles.disabledButton]}
               onPress={handleLogin}
               disabled={isLoading}
+              activeOpacity={0.8}
+              testID="login-button"
             >
               <LinearGradient
                 colors={[Colors.gold.main, Colors.gold.dark]}
