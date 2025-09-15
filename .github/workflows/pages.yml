@@ -36,28 +36,42 @@ jobs:
 
       - name: Build for web
         run: |
-          bunx expo export --platform web --output-dir dist --clear
+          bunx expo export:web --output-dir dist
           echo "Build completed, checking output..."
           ls -la dist/
         env:
           NODE_ENV: production
           CI: true
-          GITHUB_PAGES: true
-          GITHUB_REPOSITORY: ${{ github.repository }}
+          PUBLIC_URL: /${{ github.event.repository.name }}
 
       - name: Add 404 fallback and base path fix
         run: |
+          # Copy index.html to 404.html for client-side routing
           cp dist/index.html dist/404.html
+          
+          # Add .nojekyll to prevent Jekyll processing
           touch dist/.nojekyll
           
-          # Fix base path for GitHub Pages if needed
-          if [ "${{ github.event.repository.name }}" != "" ]; then
-            sed -i 's|href="/|href="/${{ github.event.repository.name }}/|g' dist/index.html dist/404.html
-            sed -i 's|src="/|src="/${{ github.event.repository.name }}/|g' dist/index.html dist/404.html
-          fi
+          # Create a simple redirect script if needed
+          echo '<!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <title>Redirecting...</title>
+            <script>
+              // Redirect to the main app
+              window.location.replace(window.location.origin + "/${{ github.event.repository.name }}/");
+            </script>
+          </head>
+          <body>
+            <p>Redirecting to app...</p>
+          </body>
+          </html>' > dist/redirect.html
           
           echo "Files in dist after setup:"
           ls -la dist/
+          echo "Content of index.html (first 20 lines):"
+          head -20 dist/index.html
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
