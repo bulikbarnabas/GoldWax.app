@@ -27,39 +27,9 @@ export default function LoginScreen() {
   const { login, logout } = useAuth();
   const [errorMessage, setErrorMessage] = useState('');
 
-  // Clear any existing auth state when component mounts and add web-specific handlers
+  // Clear any existing auth state when component mounts
   React.useEffect(() => {
     logout();
-    
-    // Add web-specific event listeners for better compatibility
-    if (Platform.OS === 'web') {
-      const handleBeforeUnload = () => {
-        // Clear any pending navigation timeouts
-        const highestTimeoutId = setTimeout(() => {}, 0) as unknown as number;
-        for (let i = 0; i < highestTimeoutId; i++) {
-          clearTimeout(i);
-        }
-      };
-      
-      const handleVisibilityChange = () => {
-        if (document.visibilityState === 'visible') {
-          // Page became visible, check if we should redirect
-          const currentPath = window.location.pathname;
-          if (currentPath === '/login' && localStorage.getItem('@salon_auth')) {
-            console.log('User appears to be logged in, redirecting...');
-            window.location.href = '/services';
-          }
-        }
-      };
-      
-      window.addEventListener('beforeunload', handleBeforeUnload);
-      document.addEventListener('visibilitychange', handleVisibilityChange);
-      
-      return () => {
-        window.removeEventListener('beforeunload', handleBeforeUnload);
-        document.removeEventListener('visibilitychange', handleVisibilityChange);
-      };
-    }
   }, [logout]);
 
 
@@ -96,43 +66,16 @@ export default function LoginScreen() {
       const success = await login(trimmedEmail, trimmedPassword);
       
       if (success) {
-        console.log('Login successful, preparing navigation...');
+        console.log('Login successful, navigating...');
         
-        // Enhanced navigation with better error handling
-        if (Platform.OS === 'web') {
-          // Multiple fallback navigation methods for web
-          try {
-            // Method 1: Try router first
-            router.replace('/(tabs)/services');
-            
-            // Method 2: Fallback with window.location after delay
-            setTimeout(() => {
-              if (window.location.pathname === '/login') {
-                console.log('Router navigation may have failed, using window.location');
-                window.location.href = '/services';
-              }
-            }, 200);
-            
-            // Method 3: Ultimate fallback
-            setTimeout(() => {
-              if (window.location.pathname === '/login') {
-                console.log('All navigation methods failed, forcing reload');
-                window.location.reload();
-              }
-            }, 1000);
-          } catch (navError) {
-            console.error('Navigation error:', navError);
-            // Direct navigation as last resort
+        // Simple, reliable navigation
+        try {
+          router.replace('/(tabs)/services');
+        } catch (navError) {
+          console.error('Navigation error:', navError);
+          // Fallback for web
+          if (Platform.OS === 'web') {
             window.location.href = '/services';
-          }
-        } else {
-          // Native navigation with error handling
-          try {
-            router.replace('/(tabs)/services');
-          } catch (navError) {
-            console.error('Native navigation error:', navError);
-            // Try alternative navigation
-            router.push('/(tabs)/services');
           }
         }
       } else {

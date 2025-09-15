@@ -31,240 +31,75 @@ const defaultUsers: User[] = [
   }
 ];
 
-// In-memory fallback storage for when localStorage is not available
-const memoryStorage: { [key: string]: string } = {};
-
-// Enhanced web-safe storage with better cross-browser compatibility
-const safeStorage = {
-  // Test if storage is available and working
-  isStorageAvailable(): boolean {
-    if (Platform.OS !== 'web') return true;
-    
-    try {
-      if (typeof window === 'undefined' || typeof Storage === 'undefined') {
-        return false;
-      }
-      
-      // Check if localStorage is available and not blocked
-      const storage = window.localStorage;
-      if (!storage) {
-        return false;
-      }
-      
-      // Test storage functionality with a unique key
-      const testKey = '__gw_storage_test__' + Math.random().toString(36).substr(2, 9);
-      storage.setItem(testKey, 'test');
-      const result = storage.getItem(testKey);
-      storage.removeItem(testKey);
-      return result === 'test';
-    } catch (e) {
-      // Storage might be blocked by browser settings, incognito mode, or quota exceeded
-      console.warn('Storage not available:', e);
-      return false;
-    }
-  },
-
-  // Check if sessionStorage is available
-  isSessionStorageAvailable(): boolean {
-    if (Platform.OS !== 'web') return false;
-    
-    try {
-      if (typeof window === 'undefined' || !window.sessionStorage) {
-        return false;
-      }
-      
-      const testKey = '__gw_session_test__' + Math.random().toString(36).substr(2, 9);
-      window.sessionStorage.setItem(testKey, 'test');
-      const result = window.sessionStorage.getItem(testKey);
-      window.sessionStorage.removeItem(testKey);
-      return result === 'test';
-    } catch (e) {
-      return false;
-    }
-  },
-
+// Simplified cross-browser storage
+const simpleStorage = {
   async getItem(key: string): Promise<string | null> {
     try {
       if (Platform.OS === 'web') {
-        // Try localStorage first
-        if (this.isStorageAvailable()) {
-          try {
-            const value = window.localStorage.getItem(key);
-            if (value !== null && value !== 'undefined') {
-              // Validate JSON before returning
-              try {
-                JSON.parse(value);
-                return value;
-              } catch (e) {
-                // Invalid JSON, remove it
-                window.localStorage.removeItem(key);
-              }
-            }
-          } catch (e) {
-            console.warn('localStorage getItem failed:', e);
-          }
-        }
+        // Try multiple storage methods
+        let value = null;
         
-        // Try sessionStorage as fallback
-        if (this.isSessionStorageAvailable()) {
-          try {
-            const value = window.sessionStorage.getItem(key);
-            if (value !== null && value !== 'undefined') {
-              try {
-                JSON.parse(value);
-                return value;
-              } catch (e) {
-                window.sessionStorage.removeItem(key);
-              }
-            }
-          } catch (e) {
-            console.warn('sessionStorage getItem failed:', e);
-          }
-        }
+        // Try localStorage
+        try {
+          value = localStorage.getItem(key);
+          if (value && value !== 'undefined') return value;
+        } catch (e) {}
         
-        // Use memory storage as last resort
-        const memValue = memoryStorage[key];
-        return (memValue && memValue !== 'undefined') ? memValue : null;
+        // Try sessionStorage
+        try {
+          value = sessionStorage.getItem(key);
+          if (value && value !== 'undefined') return value;
+        } catch (e) {}
+        
+        return null;
       }
       return await AsyncStorage.getItem(key);
     } catch (error) {
       console.error('Storage getItem error:', error);
-      const memValue = memoryStorage[key];
-      return (memValue && memValue !== 'undefined') ? memValue : null;
+      return null;
     }
   },
 
   async setItem(key: string, value: string): Promise<void> {
     try {
       if (Platform.OS === 'web') {
-        // Validate JSON before storing
+        // Try localStorage first
         try {
-          JSON.parse(value);
-        } catch (e) {
-          console.error('Invalid JSON value for key:', key);
+          localStorage.setItem(key, value);
           return;
+        } catch (e) {
+          console.warn('localStorage failed, trying sessionStorage');
         }
         
-        // Always save to memory storage first
-        memoryStorage[key] = value;
-        
-        let stored = false;
-        
-        // Try localStorage with quota check
-        if (this.isStorageAvailable()) {
-          try {
-            // Check available space (rough estimate)
-            const testValue = 'x'.repeat(1024); // 1KB test
-            const testKey = '__gw_quota_test__';
-            window.localStorage.setItem(testKey, testValue);
-            window.localStorage.removeItem(testKey);
-            
-            // If test passed, store the actual value
-            window.localStorage.setItem(key, value);
-            stored = true;
-          } catch (e) {
-            console.warn('localStorage setItem failed (quota/other):', e);
-            // Try to clear some space by removing old test keys
-            try {
-              for (let i = 0; i < window.localStorage.length; i++) {
-                const storageKey = window.localStorage.key(i);
-                if (storageKey && storageKey.startsWith('__gw_')) {
-                  window.localStorage.removeItem(storageKey);
-                }
-              }
-              // Try again after cleanup
-              window.localStorage.setItem(key, value);
-              stored = true;
-            } catch (e2) {
-              console.warn('localStorage cleanup and retry failed:', e2);
-            }
-          }
-        }
-        
-        // Try sessionStorage as fallback
-        if (!stored && this.isSessionStorageAvailable()) {
-          try {
-            window.sessionStorage.setItem(key, value);
-            stored = true;
-          } catch (e) {
-            console.warn('sessionStorage setItem failed:', e);
-          }
-        }
-        
-        // Dispatch storage event for cross-tab communication (only if localStorage worked)
-        if (stored && typeof window !== 'undefined' && this.isStorageAvailable()) {
-          try {
-            // Use setTimeout to avoid blocking
-            setTimeout(() => {
-              window.dispatchEvent(new StorageEvent('storage', {
-                key,
-                newValue: value,
-                url: window.location.href,
-                storageArea: window.localStorage
-              }));
-            }, 0);
-          } catch (e) {
-            // Ignore event dispatch errors
-          }
+        // Fallback to sessionStorage
+        try {
+          sessionStorage.setItem(key, value);
+          return;
+        } catch (e) {
+          console.warn('All storage methods failed');
         }
       } else {
         await AsyncStorage.setItem(key, value);
       }
     } catch (error) {
       console.error('Storage setItem error:', error);
-      // Still save to memory storage as fallback
-      if (Platform.OS === 'web') {
-        memoryStorage[key] = value;
-      }
     }
   },
 
   async removeItem(key: string): Promise<void> {
     try {
       if (Platform.OS === 'web') {
-        // Remove from memory storage
-        delete memoryStorage[key];
-        
-        // Try localStorage
-        if (this.isStorageAvailable()) {
-          try {
-            window.localStorage.removeItem(key);
-          } catch (e) {
-            console.warn('localStorage removeItem failed:', e);
-          }
-        }
-        
-        // Also try sessionStorage
         try {
-          if (typeof window !== 'undefined' && window.sessionStorage) {
-            window.sessionStorage.removeItem(key);
-          }
-        } catch (e) {
-          console.warn('sessionStorage removeItem failed:', e);
-        }
-        
-        // Dispatch storage event
-        if (typeof window !== 'undefined') {
-          try {
-            window.dispatchEvent(new StorageEvent('storage', {
-              key,
-              newValue: null,
-              url: window.location.href,
-              storageArea: window.localStorage
-            }));
-          } catch (e) {
-            // Ignore event dispatch errors
-          }
-        }
+          localStorage.removeItem(key);
+        } catch (e) {}
+        try {
+          sessionStorage.removeItem(key);
+        } catch (e) {}
       } else {
         await AsyncStorage.removeItem(key);
       }
     } catch (error) {
       console.error('Storage removeItem error:', error);
-      // Still remove from memory storage
-      if (Platform.OS === 'web') {
-        delete memoryStorage[key];
-      }
     }
   }
 };
@@ -279,7 +114,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
   const loadAuthState = useCallback(async () => {
     try {
-      const stored = await safeStorage.getItem(STORAGE_KEY);
+      const stored = await simpleStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsedAuth = JSON.parse(stored);
         // Validate that the user still exists in the users list
@@ -289,14 +124,14 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
             setAuthState(parsedAuth);
           } else {
             // User no longer exists, clear auth
-            await safeStorage.removeItem(STORAGE_KEY);
+            await simpleStorage.removeItem(STORAGE_KEY);
           }
         }
       }
     } catch (error) {
       console.error('Error loading auth state:', error);
       // Clear potentially corrupted auth state
-      await safeStorage.removeItem(STORAGE_KEY);
+      await simpleStorage.removeItem(STORAGE_KEY);
     } finally {
       setIsLoading(false);
     }
@@ -304,7 +139,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
   const loadUsers = useCallback(async () => {
     try {
-      const stored = await safeStorage.getItem(USERS_KEY);
+      const stored = await simpleStorage.getItem(USERS_KEY);
       if (stored) {
         const parsedUsers = JSON.parse(stored);
         // Ensure default users are always present
@@ -318,10 +153,10 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
           }
         });
         setUsers(mergedUsers);
-        await safeStorage.setItem(USERS_KEY, JSON.stringify(mergedUsers));
+        await simpleStorage.setItem(USERS_KEY, JSON.stringify(mergedUsers));
       } else {
         setUsers(defaultUsers);
-        await safeStorage.setItem(USERS_KEY, JSON.stringify(defaultUsers));
+        await simpleStorage.setItem(USERS_KEY, JSON.stringify(defaultUsers));
       }
     } catch (error) {
       console.error('Error loading users:', error);
@@ -395,7 +230,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         
         // Save to storage with error handling
         try {
-          await safeStorage.setItem(STORAGE_KEY, JSON.stringify(newAuthState));
+          await simpleStorage.setItem(STORAGE_KEY, JSON.stringify(newAuthState));
           console.log('Auth state saved to storage successfully');
         } catch (storageError) {
           console.warn('Failed to save auth state to storage:', storageError);
@@ -425,7 +260,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         isAuthenticated: false
       };
       setAuthState(newAuthState);
-      await safeStorage.removeItem(STORAGE_KEY);
+      await simpleStorage.removeItem(STORAGE_KEY);
       
       console.log('Logout successful');
     } catch (error) {
@@ -445,7 +280,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
     const updatedUsers = [...users, user];
     setUsers(updatedUsers);
-    await safeStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
+    await simpleStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
     return true;
   }, [authState.user?.role, users]);
 
@@ -458,14 +293,14 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       u.id === userId ? { ...u, ...updates } : u
     );
     setUsers(updatedUsers);
-    await safeStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
+    await simpleStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
     
     if (authState.user?.id === userId) {
       const updatedUser = updatedUsers.find(u => u.id === userId);
       if (updatedUser) {
         const newAuthState = { ...authState, user: updatedUser };
         setAuthState(newAuthState);
-        await safeStorage.setItem(STORAGE_KEY, JSON.stringify(newAuthState));
+        await simpleStorage.setItem(STORAGE_KEY, JSON.stringify(newAuthState));
       }
     }
     
@@ -480,7 +315,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
       const updatedUsers = users.filter(u => u.id !== userId);
       setUsers(updatedUsers);
-      await safeStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
+      await simpleStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
       
       // Force a small delay to ensure state is updated
       await new Promise(resolve => setTimeout(resolve, 100));
