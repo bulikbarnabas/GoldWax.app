@@ -151,7 +151,12 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       
       // Trim whitespace and normalize email
       const normalizedEmail = email.trim().toLowerCase();
-      const user = users.find(u => u.email.toLowerCase() === normalizedEmail && u.password === password);
+      const normalizedPassword = password.trim();
+      
+      const user = users.find(u => 
+        u.email.toLowerCase() === normalizedEmail && 
+        u.password === normalizedPassword
+      );
       
       if (user) {
         const newAuthState = {
@@ -161,10 +166,14 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         setAuthState(newAuthState);
         await safeStorage.setItem(STORAGE_KEY, JSON.stringify(newAuthState));
         console.log('Login successful for user:', user.email);
+        
+        // Force a small delay to ensure state is updated
+        await new Promise(resolve => setTimeout(resolve, 100));
         return true;
       }
       
-      console.log('Login failed: Invalid credentials');
+      console.log('Login failed: Invalid credentials for:', normalizedEmail);
+      console.log('Available users:', users.map(u => ({ email: u.email.toLowerCase(), password: u.password })));
       return false;
     } catch (error) {
       console.error('Login error:', error);
@@ -181,6 +190,14 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       };
       setAuthState(newAuthState);
       await safeStorage.removeItem(STORAGE_KEY);
+      
+      // Force reload on web to clear any cached state
+      if (Platform.OS === 'web') {
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 100);
+      }
+      
       console.log('Logout successful');
     } catch (error) {
       console.error('Logout error:', error);
@@ -235,6 +252,9 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       const updatedUsers = users.filter(u => u.id !== userId);
       setUsers(updatedUsers);
       await safeStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
+      
+      // Force a small delay to ensure state is updated
+      await new Promise(resolve => setTimeout(resolve, 100));
       return true;
     } catch (error) {
       console.error('Delete user error:', error);

@@ -45,14 +45,28 @@ export default function LoginScreen() {
     }
 
     setIsLoading(true);
-    const success = await login(email.trim(), password.trim());
-    setIsLoading(false);
     
-    if (success) {
-      // Mindig a szolgáltatások oldalra irányítunk
-      router.replace('/(tabs)/services');
-    } else {
-      setErrorMessage('Hibás email vagy jelszó!');
+    try {
+      const success = await login(email.trim(), password.trim());
+      
+      if (success) {
+        // Small delay to ensure auth state is updated
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        // Force navigation with replace to avoid back button issues
+        if (Platform.OS === 'web') {
+          window.location.href = '/(tabs)/services';
+        } else {
+          router.replace('/(tabs)/services');
+        }
+      } else {
+        setErrorMessage('Hibás email vagy jelszó!');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      setErrorMessage('Bejelentkezési hiba történt!');
+    } finally {
+      setIsLoading(false);
     }
   };
 
