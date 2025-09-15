@@ -31,7 +31,7 @@ jobs:
           # Install all dependencies including dev dependencies
           npm install --legacy-peer-deps
           # Ensure ajv and webpack dependencies are installed
-          npm install --legacy-peer-deps ajv@8 @expo/webpack-config@19 html-webpack-plugin@5 webpack@5 webpack-cli@5 webpack-dev-server@4
+          npm install --legacy-peer-deps ajv@8 @expo/webpack-config@19 html-webpack-plugin@5 webpack@5 webpack-cli@6 webpack-dev-server@5
 
       - name: Clear cache
         run: |
@@ -40,7 +40,9 @@ jobs:
 
       - name: Build for web
         run: |
-          npx expo export --platform web --output-dir dist
+          # Set the base path for GitHub Pages
+          export EXPO_PUBLIC_BASE_PATH="/${{ github.event.repository.name }}"
+          npx expo export --platform web --output-dir dist --base-path "/${{ github.event.repository.name }}"
           echo "Build completed, checking output..."
           ls -la dist/
         env:
@@ -56,21 +58,11 @@ jobs:
           # Add .nojekyll to prevent Jekyll processing
           touch dist/.nojekyll
           
-          # Create a simple redirect script if needed
-          echo '<!DOCTYPE html>
-          <html>
-          <head>
-            <meta charset="utf-8">
-            <title>Redirecting...</title>
-            <script>
-              // Redirect to the main app
-              window.location.replace(window.location.origin + "/${{ github.event.repository.name }}/");
-            </script>
-          </head>
-          <body>
-            <p>Redirecting to app...</p>
-          </body>
-          </html>' > dist/redirect.html
+          # Fix asset paths in HTML files for GitHub Pages
+          sed -i 's|href="/|href="/${{ github.event.repository.name }}/|g' dist/index.html
+          sed -i 's|src="/|src="/${{ github.event.repository.name }}/|g' dist/index.html
+          sed -i 's|href="/|href="/${{ github.event.repository.name }}/|g' dist/404.html
+          sed -i 's|src="/|src="/${{ github.event.repository.name }}/|g' dist/404.html
           
           echo "Files in dist after setup:"
           ls -la dist/

@@ -73,9 +73,10 @@ export default function LoginScreen() {
           router.replace('/(tabs)/services');
         } catch (navError) {
           console.error('Navigation error:', navError);
-          // Fallback for web
+          // Fallback for web with base path support
           if (Platform.OS === 'web') {
-            window.location.href = '/services';
+            const basePath = process.env.EXPO_PUBLIC_BASE_PATH || '';
+            window.location.href = basePath + '/services';
           }
         }
       } else {

@@ -40,10 +40,19 @@ module.exports = async function (env, argv) {
   
   // Fix for GitHub Pages routing
   if (process.env.PUBLIC_URL) {
-    config.output.publicPath = process.env.PUBLIC_URL + '/';
-  } else if (process.env.GITHUB_PAGES) {
+    config.output.publicPath = process.env.PUBLIC_URL.endsWith('/') ? process.env.PUBLIC_URL : process.env.PUBLIC_URL + '/';
+  } else if (process.env.GITHUB_PAGES || process.env.CI) {
     const repoName = process.env.GITHUB_REPOSITORY?.split('/')[1] || '';
-    config.output.publicPath = `/${repoName}/`;
+    if (repoName) {
+      config.output.publicPath = `/${repoName}/`;
+    }
+  }
+  
+  // Ensure proper base path handling
+  if (process.env.EXPO_PUBLIC_BASE_PATH) {
+    config.output.publicPath = process.env.EXPO_PUBLIC_BASE_PATH.endsWith('/') 
+      ? process.env.EXPO_PUBLIC_BASE_PATH 
+      : process.env.EXPO_PUBLIC_BASE_PATH + '/';
   }
   
   // Ensure HTML plugin is configured correctly

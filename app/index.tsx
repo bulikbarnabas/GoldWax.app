@@ -40,13 +40,14 @@ export default function WelcomeScreen() {
       }
     } catch (error) {
       console.error('Navigation error:', error);
-      // Fallback for web
+      // Fallback for web with base path support
       if (Platform.OS === 'web') {
+        const basePath = process.env.EXPO_PUBLIC_BASE_PATH || '';
         if (!isAuthenticated) {
-          window.location.href = '/login';
+          window.location.href = basePath + '/login';
         } else {
           const webRoute = user?.role === 'admin' ? '/dashboard' : '/services';
-          window.location.href = webRoute;
+          window.location.href = basePath + webRoute;
         }
       }
     } finally {

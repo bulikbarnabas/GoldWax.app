@@ -110,6 +110,20 @@ export default function RootLayout() {
     
     // Web-specific initialization
     if (Platform.OS === 'web') {
+      // Handle GitHub Pages base path
+      const currentPath = window.location.pathname;
+      const basePath = process.env.EXPO_PUBLIC_BASE_PATH || '';
+      
+      console.log('Current path:', currentPath);
+      console.log('Base path:', basePath);
+      
+      // If we're on GitHub Pages and the path doesn't include the base path
+      if (basePath && !currentPath.startsWith(basePath) && currentPath === '/') {
+        console.log('Redirecting to base path:', basePath);
+        window.location.replace(basePath + '/');
+        return;
+      }
+      
       // Prevent browser back button issues
       const handlePopState = (event: PopStateEvent) => {
         console.log('Browser back/forward detected:', event);

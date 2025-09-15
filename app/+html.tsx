@@ -50,6 +50,7 @@ export default function Root({ children }: PropsWithChildren) {
             -webkit-text-size-adjust: 100%;
             -ms-text-size-adjust: 100%;
             text-size-adjust: 100%;
+            background-color: #f5f5f5;
           }
           #root {
             display: flex;
@@ -57,6 +58,7 @@ export default function Root({ children }: PropsWithChildren) {
             height: 100vh;
             width: 100vw;
             position: relative;
+            background-color: #f5f5f5;
           }
           /* Enhanced button and link styles */
           button, a, [role="button"] {
@@ -109,6 +111,45 @@ export default function Root({ children }: PropsWithChildren) {
             -ms-user-select: text;
             user-select: text;
           }
+          /* Debug styles for GitHub Pages */
+          .debug-info {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px;
+            font-size: 12px;
+            z-index: 9999;
+            border-radius: 4px;
+            max-width: 300px;
+          }
+        `}} />
+        
+        {/* Debug script for GitHub Pages */}
+        <script dangerouslySetInnerHTML={{ __html: `
+          window.addEventListener('DOMContentLoaded', function() {
+            console.log('App loading...');
+            console.log('Current URL:', window.location.href);
+            console.log('Pathname:', window.location.pathname);
+            console.log('Base path:', '${process.env.EXPO_PUBLIC_BASE_PATH || 'none'}');
+            
+            // Add debug info to page
+            const debugDiv = document.createElement('div');
+            debugDiv.className = 'debug-info';
+            debugDiv.innerHTML = 
+              'URL: ' + window.location.href + '<br>' +
+              'Path: ' + window.location.pathname + '<br>' +
+              'Base: ${process.env.EXPO_PUBLIC_BASE_PATH || 'none'}';
+            document.body.appendChild(debugDiv);
+            
+            // Remove debug info after 10 seconds
+            setTimeout(() => {
+              if (debugDiv.parentNode) {
+                debugDiv.parentNode.removeChild(debugDiv);
+              }
+            }, 10000);
+          });
         `}} />
       </head>
       <body>{children}</body>
