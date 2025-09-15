@@ -21,7 +21,7 @@ function RootLayoutNav() {
 
   useEffect(() => {
     // Web-specific routing fix for page refresh
-    if (Platform.OS === 'web') {
+    if (Platform.OS === 'web' && pathname) {
       // Handle invalid routes on web
       const validRoutes = [
         '/',
@@ -34,7 +34,10 @@ function RootLayoutNav() {
         '/clients',
         '/inventory',
         '/service-management',
-        '/barcode-scanner',
+        '/barcode-scanner'
+      ];
+      
+      const validTabRoutes = [
         '/services',
         '/history',
         '/profile',
@@ -42,12 +45,16 @@ function RootLayoutNav() {
       ];
       
       // Check if current path is valid
-      const isValidRoute = validRoutes.some(route => 
-        pathname === route || pathname?.startsWith('/(tabs)')
-      );
+      const isValidRoute = validRoutes.some(route => pathname === route);
+      const isValidTabRoute = validTabRoutes.some(route => pathname === route);
+      const isTabsRoute = pathname.startsWith('/(tabs)');
       
-      // If not valid and not already redirecting, go to home
-      if (!isValidRoute && pathname && pathname !== '/+not-found') {
+      // Ha tab route-ot próbál elérni közvetlenül, irányítsuk át a (tabs) verzióra
+      if (isValidTabRoute && !isTabsRoute) {
+        router.replace(`/(tabs)${pathname}`);
+      }
+      // Ha nem valid route és nem (tabs) route, akkor főoldalra
+      else if (!isValidRoute && !isTabsRoute && pathname !== '/+not-found') {
         router.replace('/');
       }
     }
