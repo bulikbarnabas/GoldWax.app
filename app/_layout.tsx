@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { StyleSheet } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { CartProvider } from "@/hooks/use-cart";
@@ -43,13 +43,16 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
+  const [client] = useState(() => trpcClient);
+  const [qClient] = useState(() => queryClient);
+
   useEffect(() => {
     SplashScreen.hideAsync();
   }, []);
 
   return (
-    <trpc.Provider client={trpcClient} queryClient={queryClient}>
-      <QueryClientProvider client={queryClient}>
+    <trpc.Provider client={client} queryClient={qClient}>
+      <QueryClientProvider client={qClient}>
         <GestureHandlerRootView style={styles.container}>
           <AuthProvider>
             <ClientsProvider>
