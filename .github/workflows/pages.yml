@@ -63,7 +63,7 @@ jobs:
           export GITHUB_REPOSITORY="${{ github.repository }}"
           
           # Build the web app
-          npx expo export --platform web --output-dir dist
+          npx expo export -p web --output-dir dist
           
           echo "Build completed, checking output..."
           ls -la dist/
