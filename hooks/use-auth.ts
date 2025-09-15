@@ -1,6 +1,7 @@
 import createContextHook from '@nkzw/create-context-hook';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import { User, AuthState } from '@/types/salon';
 
 const STORAGE_KEY = '@salon_auth';
@@ -30,6 +31,43 @@ const defaultUsers: User[] = [
   }
 ];
 
+// Web-safe storage wrapper
+const safeStorage = {
+  async getItem(key: string): Promise<string | null> {
+    try {
+      if (Platform.OS === 'web') {
+        return localStorage.getItem(key);
+      }
+      return await AsyncStorage.getItem(key);
+    } catch (error) {
+      console.error('Storage getItem error:', error);
+      return null;
+    }
+  },
+  async setItem(key: string, value: string): Promise<void> {
+    try {
+      if (Platform.OS === 'web') {
+        localStorage.setItem(key, value);
+      } else {
+        await AsyncStorage.setItem(key, value);
+      }
+    } catch (error) {
+      console.error('Storage setItem error:', error);
+    }
+  },
+  async removeItem(key: string): Promise<void> {
+    try {
+      if (Platform.OS === 'web') {
+        localStorage.removeItem(key);
+      } else {
+        await AsyncStorage.removeItem(key);
+      }
+    } catch (error) {
+      console.error('Storage removeItem error:', error);
+    }
+  }
+};
+
 export const [AuthProvider, useAuth] = createContextHook(() => {
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
@@ -38,71 +76,112 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   const [users, setUsers] = useState<User[]>(defaultUsers);
   const [isLoading, setIsLoading] = useState(true);
 
+  const loadAuthState = useCallback(async () => {
+    try {
+      const stored = await safeStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsedAuth = JSON.parse(stored);
+        // Validate that the user still exists in the users list
+        if (parsedAuth.user) {
+          const userExists = users.some(u => u.id === parsedAuth.user.id);
+          if (userExists) {
+            setAuthState(parsedAuth);
+          } else {
+            // User no longer exists, clear auth
+            await safeStorage.removeItem(STORAGE_KEY);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error loading auth state:', error);
+      // Clear potentially corrupted auth state
+      await safeStorage.removeItem(STORAGE_KEY);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [users]);
+
+  const loadUsers = useCallback(async () => {
+    try {
+      const stored = await safeStorage.getItem(USERS_KEY);
+      if (stored) {
+        const parsedUsers = JSON.parse(stored);
+        // Ensure default users are always present
+        const mergedUsers = [...defaultUsers];
+        parsedUsers.forEach((user: User) => {
+          const existingIndex = mergedUsers.findIndex(u => u.id === user.id);
+          if (existingIndex >= 0) {
+            mergedUsers[existingIndex] = user;
+          } else {
+            mergedUsers.push(user);
+          }
+        });
+        setUsers(mergedUsers);
+        await safeStorage.setItem(USERS_KEY, JSON.stringify(mergedUsers));
+      } else {
+        setUsers(defaultUsers);
+        await safeStorage.setItem(USERS_KEY, JSON.stringify(defaultUsers));
+      }
+    } catch (error) {
+      console.error('Error loading users:', error);
+      // Fallback to default users
+      setUsers(defaultUsers);
+    }
+  }, []);
+
   useEffect(() => {
     // Felhasználók listája és mentett bejelentkezés betöltése
     const initAuth = async () => {
       await loadUsers();
-      await loadAuthState();
     };
     initAuth();
-  }, []);
+  }, [loadUsers]);
 
-  const loadAuthState = async () => {
-    try {
-      const stored = await AsyncStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsedAuth = JSON.parse(stored);
-        setAuthState(parsedAuth);
-      }
-    } catch (error) {
-      console.error('Error loading auth state:', error);
-    } finally {
-      setIsLoading(false);
+  useEffect(() => {
+    if (users.length > 0) {
+      loadAuthState();
     }
-  };
+  }, [users, loadAuthState]);
 
 
-
-  const loadUsers = async () => {
-    try {
-      const stored = await AsyncStorage.getItem(USERS_KEY);
-      if (stored) {
-        const parsedUsers = JSON.parse(stored);
-        setUsers(parsedUsers);
-      } else {
-        await AsyncStorage.setItem(USERS_KEY, JSON.stringify(defaultUsers));
-      }
-    } catch (error) {
-      console.error('Error loading users:', error);
-    }
-  };
 
   const login = useCallback(async (email: string, password: string): Promise<boolean> => {
-    const user = users.find(u => u.email === email && u.password === password);
-    
-    if (user) {
-      const newAuthState = {
-        user,
-        isAuthenticated: true
-      };
-      setAuthState(newAuthState);
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newAuthState));
-      return true;
+    try {
+      console.log('Login attempt:', { email, availableUsers: users.map(u => ({ email: u.email, role: u.role })) });
+      
+      // Trim whitespace and normalize email
+      const normalizedEmail = email.trim().toLowerCase();
+      const user = users.find(u => u.email.toLowerCase() === normalizedEmail && u.password === password);
+      
+      if (user) {
+        const newAuthState = {
+          user,
+          isAuthenticated: true
+        };
+        setAuthState(newAuthState);
+        await safeStorage.setItem(STORAGE_KEY, JSON.stringify(newAuthState));
+        console.log('Login successful for user:', user.email);
+        return true;
+      }
+      
+      console.log('Login failed: Invalid credentials');
+      return false;
+    } catch (error) {
+      console.error('Login error:', error);
+      return false;
     }
-    
-    return false;
   }, [users]);
 
   const logout = useCallback(async () => {
     try {
+      console.log('Logging out user');
       const newAuthState = {
         user: null,
         isAuthenticated: false
       };
       setAuthState(newAuthState);
-      await AsyncStorage.removeItem(STORAGE_KEY).catch(err => {
-        console.error('Error removing auth state:', err);
-      });
+      await safeStorage.removeItem(STORAGE_KEY);
+      console.log('Logout successful');
     } catch (error) {
       console.error('Logout error:', error);
     }
@@ -120,7 +199,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
     const updatedUsers = [...users, user];
     setUsers(updatedUsers);
-    await AsyncStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
+    await safeStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
     return true;
   }, [authState.user?.role, users]);
 
@@ -133,14 +212,14 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       u.id === userId ? { ...u, ...updates } : u
     );
     setUsers(updatedUsers);
-    await AsyncStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
+    await safeStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
     
     if (authState.user?.id === userId) {
       const updatedUser = updatedUsers.find(u => u.id === userId);
       if (updatedUser) {
         const newAuthState = { ...authState, user: updatedUser };
         setAuthState(newAuthState);
-        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newAuthState));
+        await safeStorage.setItem(STORAGE_KEY, JSON.stringify(newAuthState));
       }
     }
     
@@ -155,9 +234,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
       const updatedUsers = users.filter(u => u.id !== userId);
       setUsers(updatedUsers);
-      await AsyncStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers)).catch(err => {
-        console.error('Error saving users after delete:', err);
-      });
+      await safeStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
       return true;
     } catch (error) {
       console.error('Delete user error:', error);
