@@ -28,64 +28,27 @@ export default function WelcomeScreen() {
   const handleEnter = () => {
     setLoading(true);
     
-    const navigate = () => {
-      try {
+    // Simplified navigation
+    setTimeout(() => {
+      if (Platform.OS === 'web') {
+        // Direct navigation on web
         if (!isAuthenticated) {
-          console.log('Not authenticated, navigating to login');
-          if (Platform.OS === 'web') {
-            // Enhanced web navigation for login
-            try {
-              router.push('/login');
-              // Fallback for web browsers
-              setTimeout(() => {
-                if (window.location.pathname === '/' || window.location.pathname === '/index') {
-                  window.location.href = '/login';
-                }
-              }, 300);
-            } catch (e) {
-              console.error('Router navigation failed:', e);
-              window.location.href = '/login';
-            }
-          } else {
-            router.push('/login');
-          }
+          window.location.href = '/login';
         } else {
-          console.log('Authenticated, navigating to app');
+          const webRoute = user?.role === 'admin' ? '/dashboard' : '/services';
+          window.location.href = webRoute;
+        }
+      } else {
+        // Native navigation
+        if (!isAuthenticated) {
+          router.push('/login');
+        } else {
           const targetRoute = user?.role === 'admin' ? '/(tabs)/dashboard' : '/(tabs)/services';
-          
-          if (Platform.OS === 'web') {
-            // Enhanced web navigation for authenticated users
-            try {
-              router.push(targetRoute);
-              // Fallback for web browsers
-              setTimeout(() => {
-                if (window.location.pathname === '/' || window.location.pathname === '/index') {
-                  const webRoute = user?.role === 'admin' ? '/dashboard' : '/services';
-                  window.location.href = webRoute;
-                }
-              }, 300);
-            } catch (e) {
-              console.error('Router navigation failed:', e);
-              const webRoute = user?.role === 'admin' ? '/dashboard' : '/services';
-              window.location.href = webRoute;
-            }
-          } else {
-            router.push(targetRoute);
-          }
+          router.push(targetRoute);
         }
-      } catch (error) {
-        console.error('Navigation error:', error);
-        // Final fallback
-        if (Platform.OS === 'web') {
-          window.location.href = isAuthenticated ? '/services' : '/login';
-        }
-      } finally {
         setLoading(false);
       }
-    };
-    
-    // Small delay for better UX
-    setTimeout(navigate, 500);
+    }, 300);
   };
 
   return (

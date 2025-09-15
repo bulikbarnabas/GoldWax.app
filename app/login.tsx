@@ -53,72 +53,24 @@ export default function LoginScreen() {
       if (success) {
         console.log('Login successful, navigating...');
         
-        // Enhanced web navigation with multiple fallback strategies
+        // Simplified navigation for better compatibility
         if (Platform.OS === 'web') {
-          // Strategy 1: Use Expo Router
-          try {
-            console.log('Attempting router.replace...');
-            router.replace('/(tabs)/services');
-            
-            // Strategy 2: Fallback with window.location after delay
-            const fallbackTimer = setTimeout(() => {
-              console.log('Router fallback triggered, checking current path:', window.location.pathname);
-              if (window.location.pathname === '/login' || window.location.pathname === '/') {
-                console.log('Using window.location.href fallback');
-                try {
-                  window.location.href = '/services';
-                } catch (e) {
-                  console.log('href failed, trying replace:', e);
-                  window.location.replace('/services');
-                }
-              }
-            }, 300);
-            
-            // Strategy 3: Force navigation after longer delay if still on login
-            const forceTimer = setTimeout(() => {
-              if (window.location.pathname === '/login' || window.location.pathname === '/') {
-                console.log('Force navigation triggered');
-                try {
-                  // Try multiple approaches
-                  window.history.pushState(null, '', '/services');
-                  window.location.reload();
-                } catch (e) {
-                  console.log('History API failed:', e);
-                  window.location.replace('/services');
-                }
-              }
-            }, 1000);
-            
-            // Cleanup timers if navigation succeeds
-            const checkNavigation = () => {
-              if (window.location.pathname !== '/login' && window.location.pathname !== '/') {
-                clearTimeout(fallbackTimer);
-                clearTimeout(forceTimer);
-              }
-            };
-            setTimeout(checkNavigation, 100);
-            
-          } catch (e) {
-            console.error('Router navigation failed:', e);
-            // Immediate fallback
-            try {
-              window.location.href = '/services';
-            } catch (locationError) {
-              console.error('All navigation methods failed:', locationError);
-              window.location.replace('/services');
-            }
-          }
+          // Use a small delay to ensure state is saved
+          setTimeout(() => {
+            // Use window.location for most reliable navigation on web
+            window.location.href = '/services';
+          }, 100);
         } else {
           // Native navigation
           router.replace('/(tabs)/services');
         }
       } else {
         setErrorMessage('Hibás email vagy jelszó!');
+        setIsLoading(false);
       }
     } catch (error) {
       console.error('Login error:', error);
       setErrorMessage('Bejelentkezési hiba történt!');
-    } finally {
       setIsLoading(false);
     }
   };

@@ -31,6 +31,9 @@ const defaultUsers: User[] = [
   }
 ];
 
+// In-memory fallback storage for when localStorage is not available
+const memoryStorage: { [key: string]: string } = {};
+
 // Enhanced web-safe storage with better cross-browser compatibility
 const safeStorage = {
   // Test if storage is available and working
@@ -38,17 +41,24 @@ const safeStorage = {
     if (Platform.OS !== 'web') return true;
     
     try {
-      if (typeof window === 'undefined' || !window.localStorage) {
+      if (typeof window === 'undefined') {
+        return false;
+      }
+      
+      // Check if localStorage is available and not blocked
+      const storage = window.localStorage;
+      if (!storage) {
         return false;
       }
       
       // Test storage functionality
-      const testKey = '__storage_test__';
-      window.localStorage.setItem(testKey, 'test');
-      const result = window.localStorage.getItem(testKey);
-      window.localStorage.removeItem(testKey);
+      const testKey = '__storage_test__' + Date.now();
+      storage.setItem(testKey, 'test');
+      const result = storage.getItem(testKey);
+      storage.removeItem(testKey);
       return result === 'test';
     } catch (e) {
+      // Storage might be blocked by browser settings or incognito mode
       console.warn('Storage not available:', e);
       return false;
     }
@@ -57,77 +67,71 @@ const safeStorage = {
   async getItem(key: string): Promise<string | null> {
     try {
       if (Platform.OS === 'web') {
-        if (!this.isStorageAvailable()) {
-          // Fallback to sessionStorage or memory storage
+        // Try localStorage first
+        if (this.isStorageAvailable()) {
           try {
-            if (typeof window !== 'undefined' && window.sessionStorage) {
-              return window.sessionStorage.getItem(key);
-            }
+            const value = window.localStorage.getItem(key);
+            if (value !== null) return value;
           } catch (e) {
-            console.warn('SessionStorage also not available:', e);
+            console.warn('localStorage getItem failed:', e);
           }
-          return null;
         }
         
+        // Try sessionStorage as fallback
         try {
-          return window.localStorage.getItem(key);
-        } catch (e) {
-          console.warn('localStorage getItem failed:', e);
-          // Try sessionStorage as fallback
-          try {
-            if (window.sessionStorage) {
-              return window.sessionStorage.getItem(key);
-            }
-          } catch (sessionError) {
-            console.warn('SessionStorage getItem also failed:', sessionError);
+          if (typeof window !== 'undefined' && window.sessionStorage) {
+            const value = window.sessionStorage.getItem(key);
+            if (value !== null) return value;
           }
-          return null;
+        } catch (e) {
+          console.warn('sessionStorage getItem failed:', e);
         }
+        
+        // Use memory storage as last resort
+        return memoryStorage[key] || null;
       }
       return await AsyncStorage.getItem(key);
     } catch (error) {
       console.error('Storage getItem error:', error);
-      return null;
+      return memoryStorage[key] || null;
     }
   },
 
   async setItem(key: string, value: string): Promise<void> {
     try {
       if (Platform.OS === 'web') {
-        if (!this.isStorageAvailable()) {
-          // Fallback to sessionStorage
+        // Always save to memory storage first
+        memoryStorage[key] = value;
+        
+        // Try localStorage
+        if (this.isStorageAvailable()) {
           try {
-            if (typeof window !== 'undefined' && window.sessionStorage) {
-              window.sessionStorage.setItem(key, value);
-            }
+            window.localStorage.setItem(key, value);
           } catch (e) {
-            console.warn('SessionStorage setItem failed:', e);
+            console.warn('localStorage setItem failed:', e);
           }
-          return;
         }
         
+        // Also try sessionStorage for redundancy
         try {
-          window.localStorage.setItem(key, value);
-          // Dispatch custom event for better cross-browser compatibility
-          if (typeof window !== 'undefined') {
-            try {
-              window.dispatchEvent(new CustomEvent('storage-change', {
-                detail: { key, newValue: value }
-              }));
-            } catch (e) {
-              // Fallback for older browsers
-              console.warn('Custom event dispatch failed:', e);
-            }
+          if (typeof window !== 'undefined' && window.sessionStorage) {
+            window.sessionStorage.setItem(key, value);
           }
         } catch (e) {
-          console.warn('localStorage setItem failed:', e);
-          // Try sessionStorage as fallback
+          console.warn('sessionStorage setItem failed:', e);
+        }
+        
+        // Dispatch storage event for cross-tab communication
+        if (typeof window !== 'undefined') {
           try {
-            if (window.sessionStorage) {
-              window.sessionStorage.setItem(key, value);
-            }
-          } catch (sessionError) {
-            console.warn('SessionStorage setItem also failed:', sessionError);
+            window.dispatchEvent(new StorageEvent('storage', {
+              key,
+              newValue: value,
+              url: window.location.href,
+              storageArea: window.localStorage
+            }));
+          } catch (e) {
+            // Ignore event dispatch errors
           }
         }
       } else {
@@ -135,46 +139,48 @@ const safeStorage = {
       }
     } catch (error) {
       console.error('Storage setItem error:', error);
+      // Still save to memory storage
+      if (Platform.OS === 'web') {
+        memoryStorage[key] = value;
+      }
     }
   },
 
   async removeItem(key: string): Promise<void> {
     try {
       if (Platform.OS === 'web') {
-        if (!this.isStorageAvailable()) {
-          // Fallback to sessionStorage
+        // Remove from memory storage
+        delete memoryStorage[key];
+        
+        // Try localStorage
+        if (this.isStorageAvailable()) {
           try {
-            if (typeof window !== 'undefined' && window.sessionStorage) {
-              window.sessionStorage.removeItem(key);
-            }
+            window.localStorage.removeItem(key);
           } catch (e) {
-            console.warn('SessionStorage removeItem failed:', e);
+            console.warn('localStorage removeItem failed:', e);
           }
-          return;
         }
         
+        // Also try sessionStorage
         try {
-          window.localStorage.removeItem(key);
-          // Dispatch custom event for better cross-browser compatibility
-          if (typeof window !== 'undefined') {
-            try {
-              window.dispatchEvent(new CustomEvent('storage-change', {
-                detail: { key, newValue: null }
-              }));
-            } catch (e) {
-              // Fallback for older browsers
-              console.warn('Custom event dispatch failed:', e);
-            }
+          if (typeof window !== 'undefined' && window.sessionStorage) {
+            window.sessionStorage.removeItem(key);
           }
         } catch (e) {
-          console.warn('localStorage removeItem failed:', e);
-          // Try sessionStorage as fallback
+          console.warn('sessionStorage removeItem failed:', e);
+        }
+        
+        // Dispatch storage event
+        if (typeof window !== 'undefined') {
           try {
-            if (window.sessionStorage) {
-              window.sessionStorage.removeItem(key);
-            }
-          } catch (sessionError) {
-            console.warn('SessionStorage removeItem also failed:', sessionError);
+            window.dispatchEvent(new StorageEvent('storage', {
+              key,
+              newValue: null,
+              url: window.location.href,
+              storageArea: window.localStorage
+            }));
+          } catch (e) {
+            // Ignore event dispatch errors
           }
         }
       } else {
@@ -182,6 +188,10 @@ const safeStorage = {
       }
     } catch (error) {
       console.error('Storage removeItem error:', error);
+      // Still remove from memory storage
+      if (Platform.OS === 'web') {
+        delete memoryStorage[key];
+      }
     }
   }
 };
