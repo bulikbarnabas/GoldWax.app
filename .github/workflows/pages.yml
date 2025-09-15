@@ -21,20 +21,32 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          bun-version: latest
+          node-version: '20'
 
-      - name: Install deps
-        run: bun install
+      - name: Install dependencies
+        run: npm install
 
-      - name: Build Expo for Web
-        run: npx expo export -p web
+      - name: Setup Expo CLI
+        run: npm install -g @expo/cli
 
-      # SPA fallback a frissítés/almappa 404 ellen
-      - name: Add 404 fallback
-        run: cp dist/index.html dist/404.html
+      - name: Build for web
+        run: |
+          npx expo export --platform web --output-dir dist
+          echo "Build completed, checking output..."
+          ls -la dist/
+        env:
+          NODE_ENV: production
+          EXPO_PUBLIC_BASE_PATH: ${{ github.event.repository.name }}
+
+      - name: Add 404 fallback for SPA
+        run: |
+          cp dist/index.html dist/404.html
+          touch dist/.nojekyll
+          echo "Files in dist after setup:"
+          ls -la dist/
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
