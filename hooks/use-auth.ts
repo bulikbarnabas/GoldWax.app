@@ -78,18 +78,24 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   };
 
   const login = useCallback(async (email: string, password: string): Promise<boolean> => {
+    console.log('Login attempt:', { email, password });
+    console.log('Available users:', users);
+    
     const user = users.find(u => u.email === email && u.password === password);
+    console.log('Found user:', user);
     
     if (user) {
       const newAuthState = {
         user,
         isAuthenticated: true
       };
+      console.log('Setting auth state:', newAuthState);
       setAuthState(newAuthState);
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newAuthState));
       return true;
     }
     
+    console.log('Login failed - user not found');
     return false;
   }, [users]);
 

@@ -22,8 +22,13 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, logout } = useAuth();
   const [errorMessage, setErrorMessage] = useState('');
+
+  // Clear any existing auth state when component mounts
+  React.useEffect(() => {
+    logout();
+  }, [logout]);
 
   const handleLogin = async () => {
     setErrorMessage('');
