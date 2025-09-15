@@ -8,15 +8,16 @@ import {
   TextInput,
   SectionList,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Search, ShoppingCart, Plus, Filter, Clock, DollarSign, Settings, Users } from 'lucide-react-native';
-import { services, serviceCategories } from '@/constants/services';
+import { Search, ShoppingCart, Plus, Filter, Clock, DollarSign, Settings, Users, AlertCircle } from 'lucide-react-native';
 import { useCart } from '@/hooks/use-cart';
 import { useAuth } from '@/hooks/use-auth';
 import { Service } from '@/types/salon';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/colors';
+import { trpc } from '@/lib/trpc';
 
 export default function ServicesScreen() {
   const router = useRouter();
@@ -26,36 +27,42 @@ export default function ServicesScreen() {
   const { addToCart, items } = useCart();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
+  
+  // Backend API hívás
+  const servicesQuery = trpc.services.list.useQuery(
+    selectedCategory !== 'all' ? { category: selectedCategory } : undefined,
+    {
+      refetchInterval: 30000, // 30 másodpercenként frissít
+    }
+  );
 
   const filteredServices = useMemo(() => {
-    return services.filter(service => {
-      const matchesCategory = selectedCategory === 'all' || service.category.id === selectedCategory;
+    if (!servicesQuery.data?.services) return [];
+    
+    return servicesQuery.data.services.filter(service => {
       const matchesSearch = service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                            service.description?.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesCategory && matchesSearch;
+      return matchesSearch;
     });
-  }, [selectedCategory, searchQuery]);
+  }, [servicesQuery.data, searchQuery]);
 
   const groupedServices = useMemo(() => {
-    const groups: { title: string; data: Service[] }[] = [];
-    const categoryMap = new Map<string, Service[]>();
+    const groups: { title: string; data: any[] }[] = [];
+    const categoryMap = new Map<string, any[]>();
 
     filteredServices.forEach(service => {
-      const categoryId = service.category.id;
-      if (!categoryMap.has(categoryId)) {
-        categoryMap.set(categoryId, []);
+      const category = service.category;
+      if (!categoryMap.has(category)) {
+        categoryMap.set(category, []);
       }
-      categoryMap.get(categoryId)?.push(service);
+      categoryMap.get(category)?.push(service);
     });
 
-    categoryMap.forEach((services, categoryId) => {
-      const category = serviceCategories.find(c => c.id === categoryId);
-      if (category) {
-        groups.push({
-          title: `${category.icon} ${category.name}`,
-          data: services
-        });
-      }
+    categoryMap.forEach((services, category) => {
+      groups.push({
+        title: category,
+        data: services
+      });
     });
 
     return groups;
@@ -63,9 +70,34 @@ export default function ServicesScreen() {
 
   const cartItemCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
-  const handleAddToCart = (service: Service) => {
+  const handleAddToCart = (service: any) => {
     if (!service?.id || !service?.name?.trim()) return;
-    addToCart(service);
+    
+    // Transform backend service to cart format
+    const cartService: Service = {
+      id: service.id,
+      name: service.name,
+      price: service.price,
+      duration: service.duration,
+      description: service.description,
+      category: {
+        id: service.category,
+        name: service.category,
+        icon: getCategoryIcon(service.category),
+      },
+    };
+    
+    addToCart(cartService);
+  };
+  
+  const getCategoryIcon = (category: string) => {
+    const icons: Record<string, string> = {
+      'Fodrászat': '💇‍♀️',
+      'Körmök': '💅',
+      'Kozmetika': '✨',
+      'Masszázs': '💆‍♀️',
+    };
+    return icons[category] || '🎯';
   };
 
   return (
@@ -135,24 +167,40 @@ export default function ServicesScreen() {
               Összes
             </Text>
           </TouchableOpacity>
-          {serviceCategories.map(category => (
+          {servicesQuery.data?.categories?.map(category => (
             <TouchableOpacity
-              key={category.id}
-              style={[styles.categoryButton, selectedCategory === category.id && styles.categoryButtonActive]}
-              onPress={() => setSelectedCategory(category.id)}
+              key={category}
+              style={[styles.categoryButton, selectedCategory === category && styles.categoryButtonActive]}
+              onPress={() => setSelectedCategory(category)}
             >
               <View style={styles.categoryIconContainer}>
-                <Text style={styles.categoryIcon}>{category.icon}</Text>
+                <Text style={styles.categoryIcon}>{getCategoryIcon(category)}</Text>
               </View>
-              <Text style={[styles.categoryText, selectedCategory === category.id && styles.categoryTextActive]}>
-                {category.name}
+              <Text style={[styles.categoryText, selectedCategory === category && styles.categoryTextActive]}>
+                {category}
               </Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
       </View>
 
-      {viewMode === 'list' ? (
+      {servicesQuery.isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={styles.loadingText}>Szolgáltatások betöltése...</Text>
+        </View>
+      ) : servicesQuery.error ? (
+        <View style={styles.errorContainer}>
+          <AlertCircle size={48} color={Colors.error} />
+          <Text style={styles.errorText}>Hiba történt a szolgáltatások betöltésekor</Text>
+          <TouchableOpacity 
+            style={styles.retryButton}
+            onPress={() => servicesQuery.refetch()}
+          >
+            <Text style={styles.retryText}>Újrapróbálás</Text>
+          </TouchableOpacity>
+        </View>
+      ) : viewMode === 'list' ? (
         <SectionList
           sections={groupedServices}
           keyExtractor={(item) => item.id}
@@ -191,12 +239,22 @@ export default function ServicesScreen() {
 }
 
 interface ServiceCardProps {
-  service: Service;
+  service: any;
   onAdd: () => void;
   viewMode: 'grid' | 'list';
 }
 
 function ServiceCard({ service, onAdd, viewMode }: ServiceCardProps) {
+  const getCategoryIcon = (category: string) => {
+    const icons: Record<string, string> = {
+      'Fodrászat': '💇‍♀️',
+      'Körmök': '💅',
+      'Kozmetika': '✨',
+      'Masszázs': '💆‍♀️',
+    };
+    return icons[category] || '🎯';
+  };
+  
   const formatPrice = (price: number) => {
     return `${price.toLocaleString('hu-HU')} Ft`;
   };
@@ -214,7 +272,7 @@ function ServiceCard({ service, onAdd, viewMode }: ServiceCardProps) {
     return (
       <View style={styles.serviceCardGrid}>
         <View style={styles.gridCardHeader}>
-          <Text style={styles.gridCategoryIcon}>{service.category.icon}</Text>
+          <Text style={styles.gridCategoryIcon}>{getCategoryIcon(service.category)}</Text>
         </View>
         <Text style={styles.gridServiceName} numberOfLines={2}>{service.name}</Text>
         <View style={styles.gridPriceContainer}>
@@ -238,7 +296,7 @@ function ServiceCard({ service, onAdd, viewMode }: ServiceCardProps) {
         <View style={styles.serviceHeader}>
           <Text style={styles.serviceName}>{service.name}</Text>
           <View style={styles.categoryBadge}>
-            <Text style={styles.categoryBadgeText}>{service.category.icon} {service.category.name}</Text>
+            <Text style={styles.categoryBadgeText}>{getCategoryIcon(service.category)} {service.category}</Text>
           </View>
         </View>
         {service.description && (
@@ -665,5 +723,41 @@ const styles = StyleSheet.create({
         elevation: 4,
       },
     }),
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: Colors.textSecondary,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 40,
+  },
+  errorText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: 20,
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600' as const,
   },
 });

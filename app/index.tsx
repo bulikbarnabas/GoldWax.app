@@ -10,9 +10,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Clock, Users, Star, MapPin, Phone, ChevronRight, Sparkles } from 'lucide-react-native';
+import { Clock, Users, Star, MapPin, Phone, ChevronRight, Sparkles, CheckCircle, XCircle } from 'lucide-react-native';
 import { Colors } from '@/constants/colors';
 import { useAuth } from '@/hooks/use-auth';
+import { trpc } from '@/lib/trpc';
 
 
 
@@ -20,6 +21,12 @@ export default function WelcomeScreen() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
+  
+  // Backend health check
+  const healthQuery = trpc.health.useQuery(undefined, {
+    retry: 2,
+    refetchInterval: 5000,
+  });
 
   const handleEnter = () => {
     setLoading(true);
@@ -53,6 +60,26 @@ export default function WelcomeScreen() {
           </View>
           <Text style={styles.brandName}>GoldWax</Text>
           <Text style={styles.tagline}>Prémium Szépségszalon</Text>
+          
+          {/* Backend status indicator */}
+          <View style={styles.statusContainer}>
+            {healthQuery.isLoading ? (
+              <View style={styles.statusBadge}>
+                <ActivityIndicator size="small" color={Colors.primary} />
+                <Text style={styles.statusText}>Kapcsolódás...</Text>
+              </View>
+            ) : healthQuery.data?.status === 'ok' ? (
+              <View style={[styles.statusBadge, styles.statusSuccess]}>
+                <CheckCircle size={16} color="#10b981" />
+                <Text style={[styles.statusText, styles.statusSuccessText]}>Backend aktív</Text>
+              </View>
+            ) : (
+              <View style={[styles.statusBadge, styles.statusError]}>
+                <XCircle size={16} color="#ef4444" />
+                <Text style={[styles.statusText, styles.statusErrorText]}>Backend hiba</Text>
+              </View>
+            )}
+          </View>
         </View>
       </LinearGradient>
 
@@ -348,6 +375,34 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     color: Colors.textSecondary,
+  },
+  statusContainer: {
+    marginTop: 16,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 6,
+  },
+  statusSuccess: {
+    backgroundColor: '#10b98120',
+  },
+  statusError: {
+    backgroundColor: '#ef444420',
+  },
+  statusText: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+  },
+  statusSuccessText: {
+    color: '#10b981',
+  },
+  statusErrorText: {
+    color: '#ef4444',
   },
 });
 
