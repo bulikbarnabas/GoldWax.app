@@ -6,9 +6,13 @@ module.exports = async function (env = {}, argv = {}) {
     mode: env?.mode || 'development'
   }, argv);
   
-  // Clean webpack-dev-server configuration
+  // Remove problematic webpack-dev-server options
   if (config.devServer) {
-    const validDevServerOptions = {
+    // Remove any unknown properties that cause validation errors
+    delete config.devServer._assetEmittingPreviousFiles;
+    
+    // Ensure only valid webpack-dev-server options are present
+    const cleanDevServer = {
       allowedHosts: 'all',
       compress: true,
       hot: true,
@@ -20,29 +24,13 @@ module.exports = async function (env = {}, argv = {}) {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
         'Access-Control-Allow-Headers': 'X-Requested-With, content-type, Authorization'
-      }
+      },
+      // Keep essential properties from original config
+      host: config.devServer.host || 'localhost',
+      port: config.devServer.port || 19006
     };
     
-    // Only keep valid webpack-dev-server options
-    const originalDevServer = config.devServer;
-    config.devServer = {};
-    
-    // Copy only valid properties
-    const validKeys = [
-      'allowedHosts', 'bonjour', 'client', 'compress', 'devMiddleware', 
-      'headers', 'historyApiFallback', 'host', 'hot', 'ipc', 'liveReload', 
-      'onListening', 'open', 'port', 'proxy', 'server', 'app', 
-      'setupExitSignals', 'setupMiddlewares', 'static', 'watchFiles', 'webSocketServer'
-    ];
-    
-    validKeys.forEach(key => {
-      if (originalDevServer[key] !== undefined) {
-        config.devServer[key] = originalDevServer[key];
-      }
-    });
-    
-    // Apply our custom options
-    Object.assign(config.devServer, validDevServerOptions);
+    config.devServer = cleanDevServer;
   }
   
   return config;
