@@ -6,46 +6,44 @@ module.exports = async function (env = {}, argv = {}) {
     mode: env?.mode || 'development'
   }, argv);
   
-  // Fix webpack-dev-server configuration issue
+  // Clean webpack-dev-server configuration
   if (config.devServer) {
-    // Remove any problematic properties
-    const cleanDevServer = { ...config.devServer };
-    delete cleanDevServer._assetEmittingPreviousFiles;
-    delete cleanDevServer.assetEmittingPreviousFiles;
-    
-    // Set clean devServer configuration
-    config.devServer = {
+    const validDevServerOptions = {
+      allowedHosts: 'all',
+      compress: true,
       hot: true,
       liveReload: true,
       historyApiFallback: {
         disableDotRule: true,
       },
-      compress: true,
-      allowedHosts: 'all',
       headers: {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
         'Access-Control-Allow-Headers': 'X-Requested-With, content-type, Authorization'
-      },
-      ...cleanDevServer
+      }
     };
+    
+    // Only keep valid webpack-dev-server options
+    const originalDevServer = config.devServer;
+    config.devServer = {};
+    
+    // Copy only valid properties
+    const validKeys = [
+      'allowedHosts', 'bonjour', 'client', 'compress', 'devMiddleware', 
+      'headers', 'historyApiFallback', 'host', 'hot', 'ipc', 'liveReload', 
+      'onListening', 'open', 'port', 'proxy', 'server', 'app', 
+      'setupExitSignals', 'setupMiddlewares', 'static', 'watchFiles', 'webSocketServer'
+    ];
+    
+    validKeys.forEach(key => {
+      if (originalDevServer[key] !== undefined) {
+        config.devServer[key] = originalDevServer[key];
+      }
+    });
+    
+    // Apply our custom options
+    Object.assign(config.devServer, validDevServerOptions);
   }
-  
-  // Ensure proper webpack configuration
-  config.resolve = {
-    ...config.resolve,
-    alias: {
-      ...config.resolve?.alias,
-      'react-native$': 'react-native-web'
-    }
-  };
   
   return config;
 };
-
-// Handle validation errors gracefully
-process.on('unhandledRejection', (reason, promise) => {
-  if (reason && reason.message && reason.message.includes('Invalid options object')) {
-    console.warn('Webpack dev server configuration warning:', reason.message);
-  }
-});
