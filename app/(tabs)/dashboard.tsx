@@ -18,9 +18,14 @@ import {
   Package
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { trpc } from '@/lib/trpc';
 
 export default function DashboardScreen() {
   const router = useRouter();
+  
+  const healthQuery = trpc.health.useQuery();
+  
+  console.log('Health check:', healthQuery.data, healthQuery.error);
 
   const stats = [
     {
@@ -121,6 +126,9 @@ export default function DashboardScreen() {
         <View>
           <Text style={styles.greeting}>{getGreeting()}!</Text>
           <Text style={styles.subtitle}>Szépségszalon Dashboard</Text>
+          {healthQuery.data && (
+            <Text style={styles.healthStatus}>Backend: {healthQuery.data.status}</Text>
+          )}
         </View>
       </View>
 
@@ -273,5 +281,10 @@ const styles = StyleSheet.create({
   },
   bottomSpacing: {
     height: 20,
+  },
+  healthStatus: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginTop: 4,
   },
 });

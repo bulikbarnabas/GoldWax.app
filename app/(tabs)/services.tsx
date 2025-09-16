@@ -6,76 +6,21 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { Search, ShoppingCart, Plus, Clock, DollarSign } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { trpc } from '@/lib/trpc';
 
-const SERVICES = [
-  {
-    id: '1',
-    name: 'Női hajvágás',
-    price: 8500,
-    duration: 60,
-    category: 'Fodrászat',
-    description: 'Mosás, vágás, szárítás',
-  },
-  {
-    id: '2',
-    name: 'Férfi hajvágás',
-    price: 5500,
-    duration: 30,
-    category: 'Fodrászat',
-    description: 'Mosás, vágás, szárítás',
-  },
-  {
-    id: '3',
-    name: 'Hajfestés',
-    price: 12000,
-    duration: 120,
-    category: 'Fodrászat',
-    description: 'Teljes hajfestés',
-  },
-  {
-    id: '4',
-    name: 'Manikűr',
-    price: 4500,
-    duration: 45,
-    category: 'Körmök',
-    description: 'Klasszikus manikűr',
-  },
-  {
-    id: '5',
-    name: 'Gél lakk',
-    price: 6500,
-    duration: 60,
-    category: 'Körmök',
-    description: 'Tartós gél lakk',
-  },
-  {
-    id: '6',
-    name: 'Arckezelés',
-    price: 9500,
-    duration: 60,
-    category: 'Kozmetika',
-    description: 'Tisztító arckezelés',
-  },
-  {
-    id: '7',
-    name: 'Smink',
-    price: 7500,
-    duration: 45,
-    category: 'Kozmetika',
-    description: 'Alkalmi smink',
-  },
-  {
-    id: '8',
-    name: 'Svéd masszázs',
-    price: 11000,
-    duration: 60,
-    category: 'Masszázs',
-    description: 'Teljes test masszázs',
-  },
-];
+
+
+const CATEGORY_MAP = {
+  'all': undefined,
+  'hair': 'Fodrászat',
+  'nails': 'Körmök',
+  'cosmetics': 'Kozmetika',
+  'massage': 'Masszázs',
+} as const;
 
 const CATEGORIES = [
   { id: 'all', name: 'Összes', icon: '🎯' },
@@ -87,25 +32,46 @@ const CATEGORIES = [
 
 export default function ServicesScreen() {
   const router = useRouter();
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedCategory, setSelectedCategory] = useState<keyof typeof CATEGORY_MAP>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [cartItems, setCartItems] = useState<string[]>([]);
 
-  const filteredServices = SERVICES.filter(service => {
-    const matchesCategory = selectedCategory === 'all' || 
-      (selectedCategory === 'hair' && service.category === 'Fodrászat') ||
-      (selectedCategory === 'nails' && service.category === 'Körmök') ||
-      (selectedCategory === 'cosmetics' && service.category === 'Kozmetika') ||
-      (selectedCategory === 'massage' && service.category === 'Masszázs');
-    
+  const servicesQuery = trpc.services.list.useQuery({
+    category: CATEGORY_MAP[selectedCategory],
+  });
+
+  const filteredServices = (servicesQuery.data?.services || []).filter(service => {
     const matchesSearch = service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           service.description?.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    return matchesCategory && matchesSearch;
+    return matchesSearch;
   });
+
+  if (servicesQuery.isLoading) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color="#FF1493" />
+        <Text style={styles.loadingText}>Szolgáltatások betöltése...</Text>
+      </View>
+    );
+  }
+
+  if (servicesQuery.error) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <Text style={styles.errorText}>Hiba történt a szolgáltatások betöltésekor</Text>
+        <TouchableOpacity 
+          style={styles.retryButton}
+          onPress={() => servicesQuery.refetch()}
+        >
+          <Text style={styles.retryButtonText}>Újrapróbálás</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   const addToCart = (serviceId: string) => {
     setCartItems([...cartItems, serviceId]);
+    console.log('Added to cart:', serviceId);
   };
 
   const formatPrice = (price: number) => {
@@ -155,7 +121,7 @@ export default function ServicesScreen() {
               styles.categoryButton,
               selectedCategory === category.id && styles.categoryButtonActive
             ]}
-            onPress={() => setSelectedCategory(category.id)}
+            onPress={() => setSelectedCategory(category.id as keyof typeof CATEGORY_MAP)}
           >
             <Text style={styles.categoryIcon}>{category.icon}</Text>
             <Text style={[
@@ -169,30 +135,36 @@ export default function ServicesScreen() {
       </ScrollView>
 
       <ScrollView style={styles.servicesContainer} showsVerticalScrollIndicator={false}>
-        {filteredServices.map(service => (
-          <View key={service.id} style={styles.serviceCard}>
-            <View style={styles.serviceInfo}>
-              <Text style={styles.serviceName}>{service.name}</Text>
-              <Text style={styles.serviceDescription}>{service.description}</Text>
-              <View style={styles.serviceDetails}>
-                <View style={styles.detailItem}>
-                  <DollarSign size={14} color="#FF1493" />
-                  <Text style={styles.servicePrice}>{formatPrice(service.price)}</Text>
-                </View>
-                <View style={styles.detailItem}>
-                  <Clock size={14} color="#999" />
-                  <Text style={styles.serviceDuration}>{formatDuration(service.duration)}</Text>
+        {filteredServices.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateText}>Nincs találat</Text>
+          </View>
+        ) : (
+          filteredServices.map(service => (
+            <View key={service.id} style={styles.serviceCard}>
+              <View style={styles.serviceInfo}>
+                <Text style={styles.serviceName}>{service.name}</Text>
+                <Text style={styles.serviceDescription}>{service.description}</Text>
+                <View style={styles.serviceDetails}>
+                  <View style={styles.detailItem}>
+                    <DollarSign size={14} color="#FF1493" />
+                    <Text style={styles.servicePrice}>{formatPrice(service.price)}</Text>
+                  </View>
+                  <View style={styles.detailItem}>
+                    <Clock size={14} color="#999" />
+                    <Text style={styles.serviceDuration}>{formatDuration(service.duration)}</Text>
+                  </View>
                 </View>
               </View>
+              <TouchableOpacity 
+                style={styles.addButton} 
+                onPress={() => addToCart(service.id)}
+              >
+                <Plus color="#fff" size={20} />
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity 
-              style={styles.addButton} 
-              onPress={() => addToCart(service.id)}
-            >
-              <Plus color="#fff" size={20} />
-            </TouchableOpacity>
-          </View>
-        ))}
+          ))
+        )}
       </ScrollView>
     </View>
   );
@@ -339,5 +311,42 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#6B7280',
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#EF4444',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: '#FF1493',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyStateText: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
   },
 });
