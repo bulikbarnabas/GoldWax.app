@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -6,227 +6,172 @@ import {
   ScrollView,
   TouchableOpacity,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Calendar, CreditCard, Banknote, Smartphone } from 'lucide-react-native';
-import { Payment } from '@/types/salon';
-import { router } from 'expo-router';
+import { Calendar, Clock, DollarSign, User } from 'lucide-react-native';
 
-const useStorage = () => {
-  const getItem = async (key: string): Promise<string | null> => {
-    try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        return localStorage.getItem(key);
-      }
-      const AsyncStorage = await import('@react-native-async-storage/async-storage');
-      return await AsyncStorage.default.getItem(key);
-    } catch {
-      return null;
-    }
-  };
-
-  return { getItem };
-};
+const HISTORY_DATA = [
+  {
+    id: '1',
+    date: '2024-01-15',
+    time: '14:30',
+    services: ['Női hajvágás', 'Hajfestés'],
+    total: 20500,
+    client: 'Kiss Anna',
+  },
+  {
+    id: '2',
+    date: '2024-01-15',
+    time: '10:00',
+    services: ['Manikűr', 'Gél lakk'],
+    total: 11000,
+    client: 'Nagy Eszter',
+  },
+  {
+    id: '3',
+    date: '2024-01-14',
+    time: '16:45',
+    services: ['Férfi hajvágás'],
+    total: 5500,
+    client: 'Kovács Péter',
+  },
+  {
+    id: '4',
+    date: '2024-01-14',
+    time: '13:00',
+    services: ['Arckezelés', 'Smink'],
+    total: 17000,
+    client: 'Szabó Júlia',
+  },
+  {
+    id: '5',
+    date: '2024-01-13',
+    time: '11:30',
+    services: ['Svéd masszázs'],
+    total: 11000,
+    client: 'Tóth Márta',
+  },
+];
 
 export default function HistoryScreen() {
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const insets = useSafeAreaInsets();
-  const storage = useStorage();
-
-  const loadPayments = async () => {
-    try {
-      const paymentsData = await storage.getItem('payments');
-      if (paymentsData) {
-        const parsedPayments: Payment[] = JSON.parse(paymentsData);
-        const sortedPayments = parsedPayments.sort((a, b) => 
-          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-        );
-        setPayments(sortedPayments);
-      }
-    } catch (error) {
-      console.error('Error loading payments:', error);
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    if (date.toDateString() === today.toDateString()) {
+      return 'Ma';
+    } else if (date.toDateString() === yesterday.toDateString()) {
+      return 'Tegnap';
+    } else {
+      return date.toLocaleDateString('hu-HU', { 
+        month: 'long', 
+        day: 'numeric' 
+      });
     }
   };
-
-  useEffect(() => {
-    loadPayments();
-  }, []);
 
   const formatPrice = (price: number) => {
     return `${price.toLocaleString('hu-HU')} Ft`;
   };
 
-  const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString('hu-HU', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  const getPaymentIcon = (method: string) => {
-    switch (method) {
-      case 'cash': return <Banknote color="#8B4B6B" size={16} />;
-      case 'card': return <CreditCard color="#8B4B6B" size={16} />;
-      case 'transfer': return <Smartphone color="#8B4B6B" size={16} />;
-      default: return <CreditCard color="#8B4B6B" size={16} />;
+  const groupedHistory = HISTORY_DATA.reduce((acc, item) => {
+    const date = formatDate(item.date);
+    if (!acc[date]) {
+      acc[date] = [];
     }
-  };
-
-  const getTotalStats = () => {
-    const today = new Date();
-    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    
-    const todayPayments = payments.filter(p => new Date(p.timestamp) >= todayStart);
-    const todayTotal = todayPayments.reduce((sum, p) => sum + p.total, 0);
-    
-    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-    const monthPayments = payments.filter(p => new Date(p.timestamp) >= monthStart);
-    const monthTotal = monthPayments.reduce((sum, p) => sum + p.total, 0);
-
-    return {
-      todayCount: todayPayments.length,
-      todayTotal,
-      monthCount: monthPayments.length,
-      monthTotal,
-    };
-  };
-
-  const stats = getTotalStats();
-
-  if (payments.length === 0) {
-    return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Előzmények</Text>
-        </View>
-        <View style={styles.emptyContainer}>
-          <Calendar color="#ccc" size={64} />
-          <Text style={styles.emptyText}>Még nincsenek tranzakciók</Text>
-          <Text style={styles.emptySubtext}>
-            Az első fizetés után itt jelennek meg az előzmények
-          </Text>
-        </View>
-      </View>
-    );
-  }
+    acc[date].push(item);
+    return acc;
+  }, {} as Record<string, typeof HISTORY_DATA>);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
         <Text style={styles.title}>Előzmények</Text>
+        <Text style={styles.subtitle}>Korábbi tranzakciók</Text>
       </View>
 
-      <ScrollView style={styles.content}>
-        <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <Text style={styles.statLabel}>Ma</Text>
-            <Text style={styles.statValue}>{formatPrice(stats.todayTotal)}</Text>
-            <Text style={styles.statCount}>{stats.todayCount} tranzakció</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statLabel}>Hónap</Text>
-            <Text style={styles.statValue}>{formatPrice(stats.monthTotal)}</Text>
-            <Text style={styles.statCount}>{stats.monthCount} tranzakció</Text>
-          </View>
+      <View style={styles.statsContainer}>
+        <View style={styles.statCard}>
+          <Text style={styles.statValue}>47</Text>
+          <Text style={styles.statLabel}>Mai tranzakció</Text>
         </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statValue}>285</Text>
+          <Text style={styles.statLabel}>Heti tranzakció</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statValue}>1,234</Text>
+          <Text style={styles.statLabel}>Havi tranzakció</Text>
+        </View>
+      </View>
 
-        <View style={styles.paymentsContainer}>
-          {payments.map(payment => (
-            <TouchableOpacity
-              key={payment.id}
-              style={styles.paymentCard}
-              onPress={() => router.push({
-                pathname: '/receipt',
-                params: { paymentId: payment.id }
-              })}
-            >
-              <View style={styles.paymentHeader}>
-                <View style={styles.paymentInfo}>
-                  <Text style={styles.customerName}>{payment.customer.name}</Text>
-                  <Text style={styles.receiptNumber}>{payment.receiptNumber}</Text>
+      {Object.entries(groupedHistory).map(([date, items]) => (
+        <View key={date} style={styles.dateSection}>
+          <Text style={styles.dateHeader}>{date}</Text>
+          {items.map(item => (
+            <TouchableOpacity key={item.id} style={styles.historyCard}>
+              <View style={styles.cardHeader}>
+                <View style={styles.timeContainer}>
+                  <Clock size={14} color="#6B7280" />
+                  <Text style={styles.time}>{item.time}</Text>
                 </View>
-                <View style={styles.paymentAmount}>
-                  <Text style={styles.amount}>{formatPrice(payment.total)}</Text>
-                  <View style={styles.paymentMethod}>
-                    {getPaymentIcon(payment.paymentMethod)}
-                  </View>
+                <View style={styles.priceContainer}>
+                  <DollarSign size={14} color="#10B981" />
+                  <Text style={styles.price}>{formatPrice(item.total)}</Text>
                 </View>
               </View>
               
-              <View style={styles.paymentDetails}>
-                <Text style={styles.itemCount}>
-                  {payment.items.length} szolgáltatás
-                </Text>
-                <Text style={styles.paymentDate}>
-                  {formatDate(payment.timestamp)}
-                </Text>
+              <View style={styles.clientContainer}>
+                <User size={14} color="#FF1493" />
+                <Text style={styles.clientName}>{item.client}</Text>
               </View>
-
-              <View style={styles.servicesList}>
-                {payment.items.slice(0, 2).map((item, index) => (
-                  <Text key={index} style={styles.serviceName}>
-                    {item.quantity}x {item.service.name}
-                  </Text>
+              
+              <View style={styles.servicesContainer}>
+                {item.services.map((service, index) => (
+                  <View key={index} style={styles.serviceBadge}>
+                    <Text style={styles.serviceText}>{service}</Text>
+                  </View>
                 ))}
-                {payment.items.length > 2 && (
-                  <Text style={styles.moreServices}>
-                    +{payment.items.length - 2} további
-                  </Text>
-                )}
               </View>
             </TouchableOpacity>
           ))}
         </View>
-      </ScrollView>
-    </View>
+      ))}
+      
+      <View style={styles.bottomSpacing} />
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#F9FAFB',
   },
   header: {
-    backgroundColor: '#fff',
+    backgroundColor: '#FF1493',
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    paddingTop: 20,
+    paddingBottom: 30,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#8B4B6B',
+    color: '#fff',
+    marginBottom: 4,
   },
-  content: {
-    flex: 1,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 40,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: '500',
-    color: '#666',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#999',
-    textAlign: 'center',
-    lineHeight: 20,
+  subtitle: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.9)',
   },
   statsContainer: {
     flexDirection: 'row',
-    padding: 16,
-    gap: 12,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    marginTop: -15,
+    marginBottom: 20,
   },
   statCard: {
     flex: 1,
@@ -234,100 +179,96 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
+    marginHorizontal: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginBottom: 4,
   },
   statLabel: {
     fontSize: 12,
-    color: '#666',
-    marginBottom: 4,
+    color: '#6B7280',
   },
-  statValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#8B4B6B',
-    marginBottom: 4,
+  dateSection: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
   },
-  statCount: {
-    fontSize: 12,
-    color: '#999',
+  dateHeader: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 12,
   },
-  paymentsContainer: {
-    padding: 16,
-    paddingTop: 0,
-  },
-  paymentCard: {
+  historyCard: {
     backgroundColor: '#fff',
-    borderRadius: 12,
     padding: 16,
+    borderRadius: 12,
     marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 8,
+    shadowRadius: 4,
     elevation: 2,
   },
-  paymentHeader: {
+  cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
     marginBottom: 12,
   },
-  paymentInfo: {
-    flex: 1,
-  },
-  customerName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 4,
-  },
-  receiptNumber: {
-    fontSize: 12,
-    color: '#8B4B6B',
-  },
-  paymentAmount: {
-    alignItems: 'flex-end',
-  },
-  amount: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#8B4B6B',
-    marginBottom: 4,
-  },
-  paymentMethod: {
+  timeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
   },
-  paymentDetails: {
+  time: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  priceContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
+    alignItems: 'center',
+    gap: 4,
   },
-  itemCount: {
+  price: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#10B981',
+  },
+  clientContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 12,
+  },
+  clientName: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#111827',
+  },
+  servicesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  serviceBadge: {
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  serviceText: {
     fontSize: 12,
-    color: '#666',
+    color: '#92400E',
+    fontWeight: '500',
   },
-  paymentDate: {
-    fontSize: 12,
-    color: '#666',
-  },
-  servicesList: {
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-    paddingTop: 8,
-  },
-  serviceName: {
-    fontSize: 12,
-    color: '#333',
-    marginBottom: 2,
-  },
-  moreServices: {
-    fontSize: 12,
-    color: '#8B4B6B',
-    fontStyle: 'italic',
+  bottomSpacing: {
+    height: 20,
   },
 });

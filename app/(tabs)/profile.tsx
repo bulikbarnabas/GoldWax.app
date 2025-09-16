@@ -5,227 +5,219 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Alert,
-  Platform
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAuth } from '@/hooks/use-auth';
 import { useRouter } from 'expo-router';
-import { LogOut, Shield, User, Mail } from 'lucide-react-native';
+import { LogOut, User, Settings, Bell, Shield, HelpCircle } from 'lucide-react-native';
 
 export default function ProfileScreen() {
-  const { user, logout } = useAuth();
   const router = useRouter();
 
-  const handleLogout = async () => {
-    if (Platform.OS === 'web') {
-      const confirmed = window.confirm('Biztosan ki szeretne jelentkezni?');
-      if (confirmed) {
-        await logout();
-        router.replace('/login');
-      }
-    } else {
-      Alert.alert(
-        'Kijelentkezés',
-        'Biztosan ki szeretne jelentkezni?',
-        [
-          { text: 'Mégse', style: 'cancel' },
-          {
-            text: 'Kijelentkezés',
-            style: 'destructive',
-            onPress: async () => {
-              await logout();
-              router.replace('/login');
-            }
-          }
-        ]
-      );
-    }
-  };
-
-  const handleAdminPanel = () => {
-    router.push('/admin');
-  };
-
-  if (!user) {
-    return null;
-  }
+  const menuItems = [
+    {
+      id: '1',
+      title: 'Személyes adatok',
+      icon: User,
+      onPress: () => console.log('Personal data'),
+    },
+    {
+      id: '2',
+      title: 'Értesítések',
+      icon: Bell,
+      onPress: () => console.log('Notifications'),
+    },
+    {
+      id: '3',
+      title: 'Beállítások',
+      icon: Settings,
+      onPress: () => router.push('/settings'),
+    },
+    {
+      id: '4',
+      title: 'Admin Panel',
+      icon: Shield,
+      onPress: () => router.push('/login'),
+    },
+    {
+      id: '5',
+      title: 'Súgó',
+      icon: HelpCircle,
+      onPress: () => console.log('Help'),
+    },
+  ];
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <View style={styles.avatarContainer}>
-            <User size={40} color="#fff" />
-          </View>
-          <Text style={styles.userName}>{user.name}</Text>
-          <View style={[styles.roleBadge, user.role === 'admin' && styles.adminBadge]}>
-            <Text style={styles.roleText}>
-              {user.role === 'admin' ? 'Adminisztrátor' : 'Dolgozó'}
-            </Text>
-          </View>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <View style={styles.header}>
+        <View style={styles.avatarContainer}>
+          <User size={40} color="#fff" />
         </View>
+        <Text style={styles.userName}>Kovács Anna</Text>
+        <Text style={styles.userRole}>Fodrász</Text>
+      </View>
 
-        <View style={styles.infoSection}>
-          <Text style={styles.sectionTitle}>Személyes adatok</Text>
-          
-          <View style={styles.infoCard}>
-            <View style={styles.infoRow}>
-              <Mail size={20} color="#666" />
-              <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Email</Text>
-                <Text style={styles.infoValue}>{user.email}</Text>
-              </View>
-            </View>
-
-            <View style={styles.divider} />
-
-            <View style={styles.infoRow}>
-              <Shield size={20} color="#666" />
-              <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Jogosultság</Text>
-                <Text style={styles.infoValue}>
-                  {user.role === 'admin' ? 'Teljes hozzáférés' : 'Korlátozott hozzáférés'}
-                </Text>
-              </View>
-            </View>
-          </View>
+      <View style={styles.statsContainer}>
+        <View style={styles.statCard}>
+          <Text style={styles.statValue}>127</Text>
+          <Text style={styles.statLabel}>Mai vendég</Text>
         </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statValue}>4.9</Text>
+          <Text style={styles.statLabel}>Értékelés</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statValue}>2</Text>
+          <Text style={styles.statLabel}>Év tapasztalat</Text>
+        </View>
+      </View>
 
-        <View style={styles.actionsSection}>
-          {user.role === 'admin' && (
-            <TouchableOpacity style={styles.adminButton} onPress={handleAdminPanel}>
-              <Shield size={20} color="#fff" />
-              <Text style={styles.adminButtonText}>Admin Panel</Text>
-            </TouchableOpacity>
-          )}
-
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <LogOut size={20} color="#ff4444" />
-            <Text style={styles.logoutButtonText}>Kijelentkezés</Text>
+      <View style={styles.menuSection}>
+        {menuItems.map(item => (
+          <TouchableOpacity
+            key={item.id}
+            style={styles.menuItem}
+            onPress={item.onPress}
+          >
+            <View style={styles.menuItemLeft}>
+              <View style={styles.iconContainer}>
+                <item.icon size={20} color="#FF1493" />
+              </View>
+              <Text style={styles.menuItemText}>{item.title}</Text>
+            </View>
+            <Text style={styles.menuItemArrow}>›</Text>
           </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+        ))}
+      </View>
+
+      <TouchableOpacity style={styles.logoutButton}>
+        <LogOut size={20} color="#FF4444" />
+        <Text style={styles.logoutText}>Kijelentkezés</Text>
+      </TouchableOpacity>
+
+      <View style={styles.bottomSpacing} />
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#F9FAFB',
   },
   header: {
+    backgroundColor: '#FF1493',
     alignItems: 'center',
-    paddingVertical: 30,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    paddingTop: 40,
+    paddingBottom: 30,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
   avatarContainer: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#4CAF50',
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
   },
   userName: {
     fontSize: 24,
-    fontWeight: 'bold' as const,
-    color: '#333',
-    marginBottom: 8,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 4,
   },
-  roleBadge: {
-    backgroundColor: '#e0e0e0',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+  userRole: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.9)',
   },
-  adminBadge: {
-    backgroundColor: '#FFE0B2',
+  statsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingHorizontal: 20,
+    marginTop: -15,
+    marginBottom: 20,
   },
-  roleText: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-    color: '#666',
-  },
-  infoSection: {
-    padding: 20,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600' as const,
-    color: '#333',
-    marginBottom: 16,
-  },
-  infoCard: {
+  statCard: {
+    flex: 1,
     backgroundColor: '#fff',
-    borderRadius: 12,
     padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginHorizontal: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 3,
   },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-  },
-  infoContent: {
-    marginLeft: 16,
-    flex: 1,
-  },
-  infoLabel: {
-    fontSize: 12,
-    color: '#999',
+  statValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#111827',
     marginBottom: 4,
   },
-  infoValue: {
-    fontSize: 16,
-    color: '#333',
-    fontWeight: '500' as const,
+  statLabel: {
+    fontSize: 12,
+    color: '#6B7280',
   },
-  divider: {
-    height: 1,
-    backgroundColor: '#f0f0f0',
-    marginVertical: 4,
+  menuSection: {
+    paddingHorizontal: 20,
   },
-  actionsSection: {
-    padding: 20,
-    gap: 12,
-  },
-  adminButton: {
+  menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FF9800',
+    justifyContent: 'space-between',
+    backgroundColor: '#fff',
     padding: 16,
     borderRadius: 12,
-    gap: 8,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  adminButtonText: {
-    color: '#fff',
+  menuItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  iconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FEF2F8',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  menuItemText: {
     fontSize: 16,
-    fontWeight: '600' as const,
+    color: '#111827',
+    fontWeight: '500',
+  },
+  menuItemArrow: {
+    fontSize: 24,
+    color: '#9CA3AF',
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#fff',
+    marginHorizontal: 20,
+    marginTop: 20,
     padding: 16,
+    backgroundColor: '#fff',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#ff4444',
+    borderColor: '#FF4444',
     gap: 8,
   },
-  logoutButtonText: {
-    color: '#ff4444',
+  logoutText: {
     fontSize: 16,
-    fontWeight: '600' as const,
+    color: '#FF4444',
+    fontWeight: '600',
+  },
+  bottomSpacing: {
+    height: 30,
   },
 });

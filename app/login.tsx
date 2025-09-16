@@ -12,9 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useAuth } from '@/hooks/use-auth';
 import { User, Lock, Eye, EyeOff } from 'lucide-react-native';
-import { Colors } from '@/constants/colors';
 import { LinearGradient } from 'expo-linear-gradient';
 
 export default function LoginScreen() {
@@ -22,76 +20,29 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-
-  const router = useRouter();
-  const { login, logout } = useAuth();
   const [errorMessage, setErrorMessage] = useState('');
-
-  // Clear any existing auth state when component mounts
-  React.useEffect(() => {
-    logout();
-  }, [logout]);
-
-
-
-
+  const router = useRouter();
 
   const handleLogin = async () => {
     setErrorMessage('');
     
-    // Input validation
-    const trimmedEmail = email.trim();
-    const trimmedPassword = password.trim();
-    
-    if (!trimmedEmail || !trimmedPassword) {
+    if (!email.trim() || !password.trim()) {
       setErrorMessage('Kérjük töltse ki az összes mezőt!');
-      return;
-    }
-
-    // Email format validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(trimmedEmail)) {
-      setErrorMessage('Kérjük adjon meg egy érvényes email címet!');
       return;
     }
 
     setIsLoading(true);
     
-    try {
-      console.log('Starting login process for:', trimmedEmail);
-      
-      // Add a small delay to ensure UI updates
-      await new Promise(resolve => setTimeout(resolve, 50));
-      
-      const success = await login(trimmedEmail, trimmedPassword);
-      
-      if (success) {
-        console.log('Login successful, navigating...');
-        
-        // Simple, reliable navigation
-        try {
-          router.replace('/(tabs)/services');
-        } catch (navError) {
-          console.error('Navigation error:', navError);
-          // Fallback for web with base path support
-          if (Platform.OS === 'web') {
-            const basePath = process.env.EXPO_PUBLIC_BASE_PATH || '';
-            window.location.href = basePath + '/services';
-          }
-        }
+    // Simulate login
+    setTimeout(() => {
+      if (email === 'admin@salon.hu' && password === 'admin123') {
+        router.replace('/(tabs)/dashboard');
       } else {
-        console.log('Login failed: Invalid credentials');
         setErrorMessage('Hibás email vagy jelszó!');
         setIsLoading(false);
       }
-    } catch (error) {
-      console.error('Login error:', error);
-      setErrorMessage('Bejelentkezési hiba történt! Kérjük próbálja újra.');
-      setIsLoading(false);
-    }
+    }, 1000);
   };
-
-
 
   return (
     <SafeAreaView style={styles.container}>
@@ -104,15 +55,13 @@ export default function LoginScreen() {
           showsVerticalScrollIndicator={false}
         >
           <LinearGradient
-            colors={[Colors.gold.light, Colors.background]}
+            colors={['#FF69B4', '#FF1493']}
             style={styles.header}
           >
             <View style={styles.logoContainer}>
-              <View style={styles.logoCircle}>
-                <Text style={styles.logoText}>GW</Text>
-              </View>
-              <Text style={styles.title}>GoldWax Szalon</Text>
-              <Text style={styles.subtitle}>Bejelentkezés</Text>
+              <Text style={styles.logoText}>💅</Text>
+              <Text style={styles.title}>Szépségszalon</Text>
+              <Text style={styles.subtitle}>Admin bejelentkezés</Text>
             </View>
           </LinearGradient>
 
@@ -122,6 +71,7 @@ export default function LoginScreen() {
                 <Text style={styles.errorText}>{errorMessage}</Text>
               </View>
             ) : null}
+            
             <View style={styles.inputContainer}>
               <User size={20} color="#666" style={styles.inputIcon} />
               <TextInput
@@ -162,24 +112,20 @@ export default function LoginScreen() {
               style={[styles.loginButton, isLoading && styles.disabledButton]}
               onPress={handleLogin}
               disabled={isLoading}
-              activeOpacity={0.8}
-              testID="login-button"
             >
-              <LinearGradient
-                colors={[Colors.gold.main, Colors.gold.dark]}
-                style={styles.buttonGradient}
-              >
-                {isLoading ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.loginButtonText}>Bejelentkezés</Text>
-                )}
-              </LinearGradient>
+              {isLoading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.loginButtonText}>Bejelentkezés</Text>
+              )}
             </TouchableOpacity>
 
-
+            <View style={styles.hintContainer}>
+              <Text style={styles.hintText}>Teszt belépés:</Text>
+              <Text style={styles.hintDetail}>Email: admin@salon.hu</Text>
+              <Text style={styles.hintDetail}>Jelszó: admin123</Text>
+            </View>
           </View>
-
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -189,7 +135,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#F9FAFB',
   },
   keyboardView: {
     flex: 1,
@@ -204,48 +150,29 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
     marginBottom: 40,
     borderRadius: 20,
-    marginHorizontal: 20,
   },
   logoContainer: {
     alignItems: 'center',
   },
-  logoCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: Colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 8,
-  },
   logoText: {
-    fontSize: 28,
-    fontWeight: 'bold' as const,
-    color: 'white',
+    fontSize: 60,
+    marginBottom: 16,
   },
   title: {
     fontSize: 28,
-    fontWeight: 'bold' as const,
-    color: Colors.text,
+    fontWeight: 'bold',
+    color: 'white',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: Colors.textSecondary,
+    color: 'rgba(255, 255, 255, 0.9)',
   },
   form: {
-    backgroundColor: Colors.surface,
+    backgroundColor: '#fff',
     borderRadius: 16,
     padding: 24,
-    marginHorizontal: 20,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    shadowColor: Colors.primary,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -255,11 +182,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: '#E5E7EB',
     borderRadius: 12,
     marginBottom: 16,
     paddingHorizontal: 16,
-    backgroundColor: Colors.background,
+    backgroundColor: '#F9FAFB',
   },
   inputIcon: {
     marginRight: 12,
@@ -268,18 +195,18 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 52,
     fontSize: 16,
-    color: Colors.text,
+    color: '#111827',
+  },
+  eyeButton: {
+    padding: 8,
   },
   loginButton: {
+    backgroundColor: '#FF1493',
     borderRadius: 12,
     height: 52,
-    marginTop: 8,
-    overflow: 'hidden',
-  },
-  buttonGradient: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    marginTop: 8,
   },
   disabledButton: {
     opacity: 0.6,
@@ -287,23 +214,33 @@ const styles = StyleSheet.create({
   loginButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600' as const,
+    fontWeight: '600',
   },
   errorContainer: {
-    backgroundColor: '#ffebee',
+    backgroundColor: '#FEE2E2',
     borderRadius: 8,
     padding: 12,
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#ffcdd2',
   },
   errorText: {
-    color: '#c62828',
+    color: '#DC2626',
     fontSize: 14,
     textAlign: 'center',
   },
-  eyeButton: {
-    padding: 8,
+  hintContainer: {
+    marginTop: 20,
+    padding: 12,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
   },
-
+  hintText: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginBottom: 4,
+    fontWeight: '600',
+  },
+  hintDetail: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
 });

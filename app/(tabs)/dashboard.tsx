@@ -1,53 +1,32 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Platform,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { 
   TrendingUp, 
   Users, 
   Clock,
   DollarSign,
-  ShoppingCart,
-  BarChart3,
+  Scissors,
+  Calendar,
   Activity,
-  UserPlus,
   Settings,
   Package
 } from 'lucide-react-native';
-import { useAuth } from '@/hooks/use-auth';
-import { useCart } from '@/hooks/use-cart';
-import { useClientStats } from '@/hooks/use-clients';
-import { useInventory } from '@/hooks/use-inventory';
-
 import { useRouter } from 'expo-router';
-import { Colors } from '@/constants/colors';
 
 export default function DashboardScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const { user } = useAuth();
-  const { getTodayRevenue, getWeekRevenue, getTodayTransactions } = useCart();
-  const { getLowStockItems } = useInventory();
-
-  const clientStats = useClientStats();
-
-  const todayRevenue = useMemo(() => getTodayRevenue(), [getTodayRevenue]);
-  const weekRevenue = useMemo(() => getWeekRevenue(), [getWeekRevenue]);
-  const todayTransactions = useMemo(() => getTodayTransactions(), [getTodayTransactions]);
-  const lowStockCount = useMemo(() => getLowStockItems().length, [getLowStockItems]);
-
 
   const stats = [
     {
       id: '1',
       title: 'Mai bevétel',
-      value: `${todayRevenue.toLocaleString('hu-HU')} Ft`,
+      value: '125,000 Ft',
       icon: DollarSign,
       color: '#10B981',
       bgColor: '#D1FAE5',
@@ -55,101 +34,72 @@ export default function DashboardScreen() {
     {
       id: '2',
       title: 'Heti bevétel',
-      value: `${weekRevenue.toLocaleString('hu-HU')} Ft`,
+      value: '850,000 Ft',
       icon: TrendingUp,
       color: '#3B82F6',
       bgColor: '#DBEAFE',
     },
     {
       id: '3',
-      title: 'Mai tranzakciók',
-      value: todayTransactions.toString(),
-      icon: Activity,
+      title: 'Mai vendégek',
+      value: '24',
+      icon: Users,
       color: '#8B5CF6',
       bgColor: '#EDE9FE',
     },
-
     {
-      id: '5',
-      title: 'Összes ügyfél',
-      value: clientStats.totalClients.toString(),
-      icon: Users,
+      id: '4',
+      title: 'Mai időpontok',
+      value: '18',
+      icon: Clock,
       color: '#EC4899',
       bgColor: '#FCE7F3',
-    },
-    {
-      id: '6',
-      title: 'Alacsony készlet',
-      value: lowStockCount.toString(),
-      icon: Activity,
-      color: lowStockCount > 0 ? '#EF4444' : '#10B981',
-      bgColor: lowStockCount > 0 ? '#FEE2E2' : '#D1FAE5',
     },
   ];
 
   const quickActions = [
     {
       id: '1',
-      title: 'Új vásárlás',
-      subtitle: 'Szolgáltatás hozzáadása',
-      icon: ShoppingCart,
-      color: Colors.primary,
+      title: 'Új foglalás',
+      subtitle: 'Időpont rögzítése',
+      icon: Calendar,
+      color: '#FF1493',
       onPress: () => router.push('/(tabs)/services'),
     },
     {
       id: '2',
-      title: 'Előzmények',
-      subtitle: 'Korábbi tranzakciók',
-      icon: Clock,
+      title: 'Szolgáltatások',
+      subtitle: 'Árak és kezelések',
+      icon: Scissors,
       color: '#6366F1',
-      onPress: () => router.push('/(tabs)/history'),
+      onPress: () => router.push('/(tabs)/services'),
     },
     {
       id: '3',
-      title: 'Statisztikák',
-      subtitle: 'Részletes jelentések',
-      icon: BarChart3,
-      color: '#10B981',
-      onPress: () => router.push('/reports'),
-    },
-
-    {
-      id: '5',
       title: 'Ügyfelek',
-      subtitle: 'Ügyfélkezelés',
+      subtitle: 'Vendég adatok',
       icon: Users,
-      color: '#EC4899',
+      color: '#10B981',
       onPress: () => router.push('/clients'),
     },
     {
-      id: '6',
+      id: '4',
       title: 'Készlet',
-      subtitle: 'Készletnyilvántartás',
-      icon: Activity,
-      color: '#EF4444',
+      subtitle: 'Termékek kezelése',
+      icon: Package,
+      color: '#F59E0B',
       onPress: () => router.push('/inventory'),
     },
-  ];
-
-  const adminActions = [
     {
-      id: '1',
-      title: 'Szolgáltatások',
-      subtitle: 'Árak és szolgáltatások kezelése',
-      icon: Package,
-      color: '#8B5CF6',
-      onPress: () => router.push('/service-management'),
+      id: '5',
+      title: 'Jelentések',
+      subtitle: 'Statisztikák',
+      icon: Activity,
+      color: '#EF4444',
+      onPress: () => router.push('/reports'),
     },
     {
-      id: '2',
-      title: 'Felhasználók',
-      subtitle: 'Dolgozók kezelése',
-      icon: UserPlus,
-      color: '#EC4899',
-      onPress: () => router.push('/admin'),
-    },
-    {
-      id: '3',
+      id: '6',
       title: 'Beállítások',
       subtitle: 'Rendszer konfiguráció',
       icon: Settings,
@@ -167,28 +117,23 @@ export default function DashboardScreen() {
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
+      <View style={styles.header}>
         <View>
-          <Text style={styles.greeting}>{getGreeting()},</Text>
-          <Text style={styles.userName}>{user?.name}!</Text>
-        </View>
-        <View style={styles.headerBadge}>
-          <Text style={styles.roleBadgeText}>
-            {user?.role === 'admin' ? 'Adminisztrátor' : 'Dolgozó'}
-          </Text>
+          <Text style={styles.greeting}>{getGreeting()}!</Text>
+          <Text style={styles.subtitle}>Szépségszalon Dashboard</Text>
         </View>
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statsScroll}>
         <View style={styles.statsContainer}>
           {stats.map((stat) => (
-            <TouchableOpacity key={stat.id} style={styles.statCard} activeOpacity={0.8}>
+            <View key={stat.id} style={styles.statCard}>
               <View style={[styles.statIconContainer, { backgroundColor: stat.bgColor }]}>
                 <stat.icon size={20} color={stat.color} />
               </View>
               <Text style={styles.statValue}>{stat.value}</Text>
               <Text style={styles.statTitle}>{stat.title}</Text>
-            </TouchableOpacity>
+            </View>
           ))}
         </View>
       </ScrollView>
@@ -212,30 +157,6 @@ export default function DashboardScreen() {
         ))}
       </View>
 
-      {user?.role === 'admin' && (
-        <View style={styles.adminContainer}>
-          <Text style={styles.sectionTitle}>Adminisztráció</Text>
-          <View style={styles.adminGrid}>
-            {adminActions.map((action) => (
-              <TouchableOpacity
-                key={action.id}
-                style={styles.adminCard}
-                onPress={action.onPress}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.adminIconContainer, { backgroundColor: `${action.color}15` }]}>
-                  <action.icon size={20} color={action.color} />
-                </View>
-                <View style={styles.adminTextContainer}>
-                  <Text style={styles.adminTitle}>{action.title}</Text>
-                  <Text style={styles.adminSubtitle}>{action.subtitle}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-      )}
-
       <View style={styles.bottomSpacing} />
     </ScrollView>
   );
@@ -244,37 +165,25 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#F9FAFB',
   },
   header: {
-    backgroundColor: Colors.primary,
+    backgroundColor: '#FF1493',
     paddingHorizontal: 20,
+    paddingTop: 20,
     paddingBottom: 30,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
   },
   greeting: {
-    fontSize: 16,
-    color: Colors.gold.light,
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#fff',
     marginBottom: 4,
   },
-  userName: {
-    fontSize: 28,
-    fontWeight: 'bold' as const,
-    color: '#fff',
-  },
-  headerBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
-    marginTop: 12,
-  },
-  roleBadgeText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600' as const,
+  subtitle: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.9)',
   },
   statsScroll: {
     marginTop: -10,
@@ -287,32 +196,23 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600' as const,
-    color: Colors.text,
+    fontWeight: '600',
+    color: '#111827',
     marginBottom: 16,
     marginTop: 8,
     paddingHorizontal: 20,
   },
-
   statCard: {
-    backgroundColor: Colors.surface,
+    backgroundColor: '#fff',
     borderRadius: 16,
     padding: 16,
     minWidth: 140,
     marginRight: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    ...Platform.select({
-      ios: {
-        shadowColor: Colors.primary,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
   },
   statIconContainer: {
     width: 40,
@@ -324,15 +224,14 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontSize: 20,
-    fontWeight: 'bold' as const,
-    color: Colors.text,
+    fontWeight: 'bold',
+    color: '#111827',
     marginBottom: 4,
   },
   statTitle: {
     fontSize: 13,
-    color: Colors.textSecondary,
+    color: '#6B7280',
   },
-
   actionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -340,25 +239,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   actionCard: {
-    backgroundColor: Colors.surface,
+    backgroundColor: '#fff',
     borderRadius: 16,
     padding: 16,
     width: '48%',
     marginBottom: 12,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.border,
-    ...Platform.select({
-      ios: {
-        shadowColor: Colors.primary,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
   },
   actionIconContainer: {
     width: 48,
@@ -370,62 +261,15 @@ const styles = StyleSheet.create({
   },
   actionTitle: {
     fontSize: 14,
-    fontWeight: '600' as const,
-    color: Colors.text,
+    fontWeight: '600',
+    color: '#111827',
     marginBottom: 4,
     textAlign: 'center',
   },
   actionSubtitle: {
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: '#6B7280',
     textAlign: 'center',
-  },
-  adminContainer: {
-    paddingHorizontal: 20,
-  },
-  adminGrid: {
-    gap: 12,
-  },
-  adminCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: 16,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.border,
-    ...Platform.select({
-      ios: {
-        shadowColor: Colors.primary,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
-  },
-  adminIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  adminTextContainer: {
-    flex: 1,
-  },
-  adminTitle: {
-    fontSize: 15,
-    fontWeight: '600' as const,
-    color: Colors.text,
-    marginBottom: 2,
-  },
-  adminSubtitle: {
-    fontSize: 13,
-    color: Colors.textSecondary,
   },
   bottomSpacing: {
     height: 20,

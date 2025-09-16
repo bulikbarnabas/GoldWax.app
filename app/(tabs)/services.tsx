@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,255 +6,108 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  SectionList,
-  Platform,
-  ActivityIndicator,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Search, ShoppingCart, Plus, Filter, Clock, DollarSign, Settings, Users, AlertCircle } from 'lucide-react-native';
-import { useCart } from '@/hooks/use-cart';
-import { useAuth } from '@/hooks/use-auth';
-import { Service } from '@/types/salon';
+import { Search, ShoppingCart, Plus, Clock, DollarSign } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import { Colors } from '@/constants/colors';
-import { trpc } from '@/lib/trpc';
+
+const SERVICES = [
+  {
+    id: '1',
+    name: 'Női hajvágás',
+    price: 8500,
+    duration: 60,
+    category: 'Fodrászat',
+    description: 'Mosás, vágás, szárítás',
+  },
+  {
+    id: '2',
+    name: 'Férfi hajvágás',
+    price: 5500,
+    duration: 30,
+    category: 'Fodrászat',
+    description: 'Mosás, vágás, szárítás',
+  },
+  {
+    id: '3',
+    name: 'Hajfestés',
+    price: 12000,
+    duration: 120,
+    category: 'Fodrászat',
+    description: 'Teljes hajfestés',
+  },
+  {
+    id: '4',
+    name: 'Manikűr',
+    price: 4500,
+    duration: 45,
+    category: 'Körmök',
+    description: 'Klasszikus manikűr',
+  },
+  {
+    id: '5',
+    name: 'Gél lakk',
+    price: 6500,
+    duration: 60,
+    category: 'Körmök',
+    description: 'Tartós gél lakk',
+  },
+  {
+    id: '6',
+    name: 'Arckezelés',
+    price: 9500,
+    duration: 60,
+    category: 'Kozmetika',
+    description: 'Tisztító arckezelés',
+  },
+  {
+    id: '7',
+    name: 'Smink',
+    price: 7500,
+    duration: 45,
+    category: 'Kozmetika',
+    description: 'Alkalmi smink',
+  },
+  {
+    id: '8',
+    name: 'Svéd masszázs',
+    price: 11000,
+    duration: 60,
+    category: 'Masszázs',
+    description: 'Teljes test masszázs',
+  },
+];
+
+const CATEGORIES = [
+  { id: 'all', name: 'Összes', icon: '🎯' },
+  { id: 'hair', name: 'Fodrászat', icon: '💇‍♀️' },
+  { id: 'nails', name: 'Körmök', icon: '💅' },
+  { id: 'cosmetics', name: 'Kozmetika', icon: '✨' },
+  { id: 'massage', name: 'Masszázs', icon: '💆‍♀️' },
+];
 
 export default function ServicesScreen() {
   const router = useRouter();
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
-  const { addToCart, items } = useCart();
-  const { user } = useAuth();
-  const insets = useSafeAreaInsets();
-  
-  // Backend API hívás
-  const servicesQuery = trpc.services.list.useQuery(
-    selectedCategory !== 'all' ? { category: selectedCategory } : undefined,
-    {
-      refetchInterval: 30000, // 30 másodpercenként frissít
-    }
-  );
+  const [cartItems, setCartItems] = useState<string[]>([]);
 
-  const filteredServices = useMemo(() => {
-    if (!servicesQuery.data?.services) return [];
+  const filteredServices = SERVICES.filter(service => {
+    const matchesCategory = selectedCategory === 'all' || 
+      (selectedCategory === 'hair' && service.category === 'Fodrászat') ||
+      (selectedCategory === 'nails' && service.category === 'Körmök') ||
+      (selectedCategory === 'cosmetics' && service.category === 'Kozmetika') ||
+      (selectedCategory === 'massage' && service.category === 'Masszázs');
     
-    return servicesQuery.data.services.filter(service => {
-      const matchesSearch = service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           service.description?.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesSearch;
-    });
-  }, [servicesQuery.data, searchQuery]);
-
-  const groupedServices = useMemo(() => {
-    const groups: { title: string; data: any[] }[] = [];
-    const categoryMap = new Map<string, any[]>();
-
-    filteredServices.forEach(service => {
-      const category = service.category;
-      if (!categoryMap.has(category)) {
-        categoryMap.set(category, []);
-      }
-      categoryMap.get(category)?.push(service);
-    });
-
-    categoryMap.forEach((services, category) => {
-      groups.push({
-        title: category,
-        data: services
-      });
-    });
-
-    return groups;
-  }, [filteredServices]);
-
-  const cartItemCount = items.reduce((sum, item) => sum + item.quantity, 0);
-
-  const handleAddToCart = (service: any) => {
-    if (!service?.id || !service?.name?.trim()) return;
+    const matchesSearch = service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          service.description?.toLowerCase().includes(searchQuery.toLowerCase());
     
-    // Transform backend service to cart format
-    const cartService: Service = {
-      id: service.id,
-      name: service.name,
-      price: service.price,
-      duration: service.duration,
-      description: service.description,
-      category: {
-        id: service.category,
-        name: service.category,
-        icon: getCategoryIcon(service.category),
-      },
-    };
-    
-    addToCart(cartService);
-  };
-  
-  const getCategoryIcon = (category: string) => {
-    const icons: Record<string, string> = {
-      'Fodrászat': '💇‍♀️',
-      'Körmök': '💅',
-      'Kozmetika': '✨',
-      'Masszázs': '💆‍♀️',
-    };
-    return icons[category] || '🎯';
+    return matchesCategory && matchesSearch;
+  });
+
+  const addToCart = (serviceId: string) => {
+    setCartItems([...cartItems, serviceId]);
   };
 
-  return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Text style={styles.title}>Szolgáltatások</Text>
-          <Text style={styles.subtitle}>Időpont nélkül is fogadjuk!</Text>
-          <View style={styles.walkInBadge}>
-            <Users size={14} color={Colors.gold.dark} />
-            <Text style={styles.walkInText}>Várakozás nélkül</Text>
-          </View>
-        </View>
-        <View style={styles.headerActions}>
-          {user?.role === 'admin' && (
-            <TouchableOpacity 
-              style={styles.adminButton}
-              onPress={() => router.push('/service-management')}
-            >
-              <Settings color={Colors.primary} size={20} />
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity 
-            style={styles.viewModeButton}
-            onPress={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
-          >
-            <Filter color={Colors.primary} size={20} />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.cartButton}
-            onPress={() => router.push('/cart')}
-          >
-            <ShoppingCart color="#fff" size={22} />
-            {cartItemCount > 0 && (
-              <View style={styles.cartBadge}>
-                <Text style={styles.cartBadgeText}>{cartItemCount}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <View style={styles.searchSection}>
-        <View style={styles.searchContainer}>
-          <Search color={Colors.primary} size={20} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Keresés szolgáltatások között..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholderTextColor="#9CA3AF"
-          />
-        </View>
-      </View>
-
-      <View style={styles.categoriesSection}>
-        <Text style={styles.categoriesTitle}>Kategóriák</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesContainer}>
-          <TouchableOpacity
-            style={[styles.categoryButton, selectedCategory === 'all' && styles.categoryButtonActive]}
-            onPress={() => setSelectedCategory('all')}
-          >
-            <View style={styles.categoryIconContainer}>
-              <Text style={styles.categoryIcon}>🎯</Text>
-            </View>
-            <Text style={[styles.categoryText, selectedCategory === 'all' && styles.categoryTextActive]}>
-              Összes
-            </Text>
-          </TouchableOpacity>
-          {servicesQuery.data?.categories?.map(category => (
-            <TouchableOpacity
-              key={category}
-              style={[styles.categoryButton, selectedCategory === category && styles.categoryButtonActive]}
-              onPress={() => setSelectedCategory(category)}
-            >
-              <View style={styles.categoryIconContainer}>
-                <Text style={styles.categoryIcon}>{getCategoryIcon(category)}</Text>
-              </View>
-              <Text style={[styles.categoryText, selectedCategory === category && styles.categoryTextActive]}>
-                {category}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-
-      {servicesQuery.isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.loadingText}>Szolgáltatások betöltése...</Text>
-        </View>
-      ) : servicesQuery.error ? (
-        <View style={styles.errorContainer}>
-          <AlertCircle size={48} color={Colors.error} />
-          <Text style={styles.errorText}>Hiba történt a szolgáltatások betöltésekor</Text>
-          <TouchableOpacity 
-            style={styles.retryButton}
-            onPress={() => servicesQuery.refetch()}
-          >
-            <Text style={styles.retryText}>Újrapróbálás</Text>
-          </TouchableOpacity>
-        </View>
-      ) : viewMode === 'list' ? (
-        <SectionList
-          sections={groupedServices}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <ServiceCard
-              service={item}
-              onAdd={() => handleAddToCart(item)}
-              viewMode={viewMode}
-            />
-          )}
-          renderSectionHeader={({ section: { title } }) => (
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>{title}</Text>
-            </View>
-          )}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          stickySectionHeadersEnabled={false}
-        />
-      ) : (
-        <ScrollView style={styles.servicesContainer} showsVerticalScrollIndicator={false}>
-          <View style={styles.gridContainer}>
-            {filteredServices.map(service => (
-              <ServiceCard
-                key={service.id}
-                service={service}
-                onAdd={() => handleAddToCart(service)}
-                viewMode={viewMode}
-              />
-            ))}
-          </View>
-        </ScrollView>
-      )}
-    </View>
-  );
-}
-
-interface ServiceCardProps {
-  service: any;
-  onAdd: () => void;
-  viewMode: 'grid' | 'list';
-}
-
-function ServiceCard({ service, onAdd, viewMode }: ServiceCardProps) {
-  const getCategoryIcon = (category: string) => {
-    const icons: Record<string, string> = {
-      'Fodrászat': '💇‍♀️',
-      'Körmök': '💅',
-      'Kozmetika': '✨',
-      'Masszázs': '💆‍♀️',
-    };
-    return icons[category] || '🎯';
-  };
-  
   const formatPrice = (price: number) => {
     return `${price.toLocaleString('hu-HU')} Ft`;
   };
@@ -268,54 +121,79 @@ function ServiceCard({ service, onAdd, viewMode }: ServiceCardProps) {
     return `${duration} perc`;
   };
 
-  if (viewMode === 'grid') {
-    return (
-      <View style={styles.serviceCardGrid}>
-        <View style={styles.gridCardHeader}>
-          <Text style={styles.gridCategoryIcon}>{getCategoryIcon(service.category)}</Text>
+  return (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <View style={styles.searchContainer}>
+          <Search color="#999" size={20} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Keresés szolgáltatások között..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholderTextColor="#999"
+          />
         </View>
-        <Text style={styles.gridServiceName} numberOfLines={2}>{service.name}</Text>
-        <View style={styles.gridPriceContainer}>
-          <Text style={styles.gridPrice}>{formatPrice(service.price)}</Text>
-          <View style={styles.gridDuration}>
-            <Clock size={12} color={Colors.textSecondary} />
-            <Text style={styles.gridDurationText}>{formatDuration(service.duration)}</Text>
-          </View>
-        </View>
-        <TouchableOpacity style={styles.gridAddButton} onPress={onAdd}>
-          <Plus color="#fff" size={16} />
-          <Text style={styles.gridAddText}>Hozzáad</Text>
+        <TouchableOpacity 
+          style={styles.cartButton}
+          onPress={() => router.push('/cart')}
+        >
+          <ShoppingCart color="#fff" size={22} />
+          {cartItems.length > 0 && (
+            <View style={styles.cartBadge}>
+              <Text style={styles.cartBadgeText}>{cartItems.length}</Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
-    );
-  }
 
-  return (
-    <View style={styles.serviceCard}>
-      <View style={styles.serviceInfo}>
-        <View style={styles.serviceHeader}>
-          <Text style={styles.serviceName}>{service.name}</Text>
-          <View style={styles.categoryBadge}>
-            <Text style={styles.categoryBadgeText}>{getCategoryIcon(service.category)} {service.category}</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesContainer}>
+        {CATEGORIES.map(category => (
+          <TouchableOpacity
+            key={category.id}
+            style={[
+              styles.categoryButton,
+              selectedCategory === category.id && styles.categoryButtonActive
+            ]}
+            onPress={() => setSelectedCategory(category.id)}
+          >
+            <Text style={styles.categoryIcon}>{category.icon}</Text>
+            <Text style={[
+              styles.categoryText,
+              selectedCategory === category.id && styles.categoryTextActive
+            ]}>
+              {category.name}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      <ScrollView style={styles.servicesContainer} showsVerticalScrollIndicator={false}>
+        {filteredServices.map(service => (
+          <View key={service.id} style={styles.serviceCard}>
+            <View style={styles.serviceInfo}>
+              <Text style={styles.serviceName}>{service.name}</Text>
+              <Text style={styles.serviceDescription}>{service.description}</Text>
+              <View style={styles.serviceDetails}>
+                <View style={styles.detailItem}>
+                  <DollarSign size={14} color="#FF1493" />
+                  <Text style={styles.servicePrice}>{formatPrice(service.price)}</Text>
+                </View>
+                <View style={styles.detailItem}>
+                  <Clock size={14} color="#999" />
+                  <Text style={styles.serviceDuration}>{formatDuration(service.duration)}</Text>
+                </View>
+              </View>
+            </View>
+            <TouchableOpacity 
+              style={styles.addButton} 
+              onPress={() => addToCart(service.id)}
+            >
+              <Plus color="#fff" size={20} />
+            </TouchableOpacity>
           </View>
-        </View>
-        {service.description && (
-          <Text style={styles.serviceDescription}>{service.description}</Text>
-        )}
-        <View style={styles.serviceDetails}>
-          <View style={styles.detailItem}>
-            <DollarSign size={14} color={Colors.primary} />
-            <Text style={styles.servicePrice}>{formatPrice(service.price)}</Text>
-          </View>
-          <View style={styles.detailItem}>
-            <Clock size={14} color={Colors.textSecondary} />
-            <Text style={styles.serviceDuration}>{formatDuration(service.duration)}</Text>
-          </View>
-        </View>
-      </View>
-      <TouchableOpacity style={styles.addButton} onPress={onAdd}>
-        <Plus color="#fff" size={20} />
-      </TouchableOpacity>
+        ))}
+      </ScrollView>
     </View>
   );
 }
@@ -323,86 +201,37 @@ function ServiceCard({ service, onAdd, viewMode }: ServiceCardProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#F9FAFB',
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: Colors.surface,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-    ...Platform.select({
-      ios: {
-        shadowColor: Colors.primary,
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.08,
-        shadowRadius: 6,
-      },
-      android: {
-        elevation: 6,
-      },
-    }),
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    gap: 12,
   },
-  headerLeft: {
+  searchContainer: {
     flex: 1,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '700' as const,
-    color: Colors.text,
-    letterSpacing: -0.5,
-    marginBottom: 2,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: Colors.primary,
-    fontWeight: '500' as const,
-  },
-  headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-  },
-  walkInBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.gold.light,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderRadius: 12,
-    marginTop: 4,
-    gap: 4,
   },
-  walkInText: {
-    fontSize: 12,
-    color: Colors.gold.dark,
-    fontWeight: '600' as const,
-  },
-  adminButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: Colors.accent,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  viewModeButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: Colors.accent,
-    justifyContent: 'center',
-    alignItems: 'center',
+  searchInput: {
+    flex: 1,
+    marginLeft: 12,
+    fontSize: 16,
+    color: '#111827',
   },
   cartButton: {
     position: 'relative',
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: Colors.primary,
+    backgroundColor: '#FF1493',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -412,275 +241,82 @@ const styles = StyleSheet.create({
     right: -2,
     backgroundColor: '#FF6B6B',
     borderRadius: 12,
-    minWidth: 24,
-    height: 24,
+    minWidth: 20,
+    height: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
   },
   cartBadgeText: {
     color: '#fff',
     fontSize: 11,
-    fontWeight: '700' as const,
-  },
-  searchSection: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 8,
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.surface,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    ...Platform.select({
-      ios: {
-        shadowColor: Colors.primary,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
-  },
-  searchInput: {
-    flex: 1,
-    marginLeft: 12,
-    fontSize: 16,
-    color: Colors.text,
-    fontWeight: '500' as const,
-  },
-  categoriesSection: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-  },
-  categoriesTitle: {
-    fontSize: 16,
-    fontWeight: '600' as const,
-    color: Colors.text,
-    marginBottom: 12,
-    letterSpacing: -0.2,
+    fontWeight: 'bold',
   },
   categoriesContainer: {
-    maxHeight: 100,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    maxHeight: 80,
   },
   categoryButton: {
     alignItems: 'center',
-    backgroundColor: Colors.surface,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
-    marginRight: 10,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
-    minWidth: 90,
-    ...Platform.select({
-      ios: {
-        shadowColor: Colors.primary,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 3,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
+    backgroundColor: '#fff',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 20,
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   categoryButtonActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-    transform: [{ scale: 1.02 }],
-    ...Platform.select({
-      ios: {
-        shadowColor: Colors.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 6,
-      },
-      android: {
-        elevation: 6,
-      },
-    }),
-  },
-  categoryIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#F8F9FA',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 6,
+    backgroundColor: '#FF1493',
+    borderColor: '#FF1493',
   },
   categoryIcon: {
-    fontSize: 18,
+    fontSize: 20,
+    marginBottom: 4,
   },
   categoryText: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    fontWeight: '600' as const,
-    textAlign: 'center',
-    lineHeight: 16,
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '600',
   },
   categoryTextActive: {
     color: '#fff',
   },
   servicesContainer: {
     flex: 1,
-    paddingHorizontal: 24,
-  },
-  listContent: {
     paddingHorizontal: 20,
-    paddingBottom: 24,
-  },
-  gridContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    paddingBottom: 32,
-  },
-  sectionHeader: {
-    backgroundColor: Colors.background,
-    paddingVertical: 10,
-    paddingHorizontal: 4,
-    marginTop: 16,
-    marginBottom: 10,
-    borderLeftWidth: 3,
-    borderLeftColor: Colors.primary,
-    paddingLeft: 12,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700' as const,
-    color: Colors.text,
-    letterSpacing: -0.3,
   },
   serviceCard: {
     flexDirection: 'row',
-    backgroundColor: Colors.surface,
+    backgroundColor: '#fff',
     padding: 16,
-    borderRadius: 14,
+    borderRadius: 12,
     marginBottom: 12,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.border,
-    ...Platform.select({
-      ios: {
-        shadowColor: Colors.primary,
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.1,
-        shadowRadius: 6,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-  serviceCardGrid: {
-    backgroundColor: Colors.surface,
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 16,
-    width: '48%',
-    borderWidth: 1,
-    borderColor: Colors.border,
-    ...Platform.select({
-      ios: {
-        shadowColor: Colors.primary,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
-  },
-  gridCardHeader: {
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  gridCategoryIcon: {
-    fontSize: 24,
-  },
-  gridServiceName: {
-    fontSize: 15,
-    fontWeight: '700' as const,
-    color: Colors.text,
-    marginBottom: 10,
-    minHeight: 40,
-    lineHeight: 20,
-  },
-  gridPriceContainer: {
-    marginBottom: 8,
-  },
-  gridPrice: {
-    fontSize: 17,
-    fontWeight: '800' as const,
-    color: Colors.primary,
-    marginBottom: 6,
-  },
-  gridDuration: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  gridDurationText: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    fontWeight: '500' as const,
-  },
-  gridAddButton: {
-    flexDirection: 'row',
-    backgroundColor: Colors.primary,
-    paddingVertical: 8,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 4,
-  },
-  gridAddText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600' as const,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   serviceInfo: {
     flex: 1,
   },
-  serviceHeader: {
-    marginBottom: 6,
-  },
   serviceName: {
     fontSize: 16,
-    fontWeight: '600' as const,
-    color: Colors.text,
+    fontWeight: '600',
+    color: '#111827',
     marginBottom: 4,
-    lineHeight: 20,
   },
-  categoryBadge: {
-    backgroundColor: Colors.accent,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    alignSelf: 'flex-start',
-    marginTop: 4,
-  },
-  categoryBadgeText: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    fontWeight: '600' as const,
+  serviceDescription: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginBottom: 8,
   },
   serviceDetails: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 20,
-    marginTop: 12,
+    gap: 16,
   },
   detailItem: {
     flexDirection: 'row',
@@ -688,76 +324,20 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   servicePrice: {
-    fontSize: 15,
-    fontWeight: '700' as const,
-    color: Colors.primary,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FF1493',
   },
   serviceDuration: {
-    fontSize: 14,
-    color: Colors.textSecondary,
-    fontWeight: '500' as const,
-  },
-  serviceDescription: {
     fontSize: 13,
-    color: Colors.textSecondary,
-    fontStyle: 'italic',
-    marginTop: 4,
-    marginBottom: 6,
-    lineHeight: 18,
+    color: '#6B7280',
   },
   addButton: {
-    backgroundColor: Colors.primary,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    backgroundColor: '#FF1493',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: Colors.primary,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: Colors.textSecondary,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 40,
-  },
-  errorText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-  },
-  retryButton: {
-    marginTop: 20,
-    backgroundColor: Colors.primary,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  retryText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600' as const,
   },
 });

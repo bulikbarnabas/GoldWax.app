@@ -1,13 +1,13 @@
 import { Tabs } from "expo-router";
-import { Home, ShoppingBag, BarChart3, User } from "lucide-react-native";
+import { Home, Scissors, Calendar, User } from "lucide-react-native";
 import React from "react";
 
 export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#8B4B6B',
-        headerShown: false,
+        tabBarActiveTintColor: '#FF1493',
+        headerShown: true,
         tabBarStyle: {
           backgroundColor: '#fff',
           borderTopColor: '#F0F0F0',
@@ -25,14 +25,14 @@ export default function TabLayout() {
         name="services"
         options={{
           title: "Szolgáltatások",
-          tabBarIcon: ({ color }) => <ShoppingBag color={color} size={24} />,
+          tabBarIcon: ({ color }) => <Scissors color={color} size={24} />,
         }}
       />
       <Tabs.Screen
         name="history"
         options={{
           title: "Előzmények",
-          tabBarIcon: ({ color }) => <BarChart3 color={color} size={24} />,
+          tabBarIcon: ({ color }) => <Calendar color={color} size={24} />,
         }}
       />
       <Tabs.Screen
