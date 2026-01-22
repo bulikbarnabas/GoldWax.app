@@ -55,13 +55,13 @@ export default function InventoryScreen() {
     updateItem, 
     deleteItem, 
     restockItem,
-    useItem,
+    useItem: consumeItem,
     getLowStockItems,
     getItemsByCategory,
     getTotalValue,
     findItemByBarcode,
     restockByBarcode,
-    useItemByBarcode,
+    useItemByBarcode: consumeItemByBarcode,
     searchItems,
     refreshInventory
   } = useInventory();
@@ -232,7 +232,7 @@ export default function InventoryScreen() {
       item = restockByBarcode(barcodeInput.trim(), quantity);
       success = !!item;
     } else {
-      success = useItemByBarcode(barcodeInput.trim(), quantity);
+      success = consumeItemByBarcode(barcodeInput.trim(), quantity);
       item = findItemByBarcode(barcodeInput.trim()) || null;
     }
 
@@ -254,7 +254,7 @@ export default function InventoryScreen() {
 
   const handleUseItem = (item: Inventory) => {
     if (item.quantity > 0) {
-      useItem(item.id, 1);
+      consumeItem(item.id, 1);
     }
   };
 
