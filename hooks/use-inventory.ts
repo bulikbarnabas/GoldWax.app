@@ -11,7 +11,7 @@ export const [InventoryProvider, useInventory] = createContextHook(() => {
   const [items, setItems] = useState<Inventory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [lastSync, setLastSync] = useState<Date>(new Date());
-  const syncIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const syncIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const appStateRef = useRef(AppState.currentState);
 
   const getStorage = useCallback(() => {
