@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { Search, ShoppingCart, Plus, Clock, DollarSign } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import { trpc } from '@/lib/trpc';
+import { services as localServices } from '@/constants/services';
 
 
 
@@ -36,38 +36,22 @@ export default function ServicesScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [cartItems, setCartItems] = useState<string[]>([]);
 
-  const servicesQuery = trpc.services.list.useQuery({
-    category: CATEGORY_MAP[selectedCategory],
-  });
+  const services = localServices.map(s => ({
+    id: s.id,
+    name: s.name,
+    description: s.description || '',
+    price: s.price,
+    duration: s.duration,
+    category: s.category.name,
+  }));
 
-  const filteredServices = (servicesQuery.data?.services || []).filter(service => {
+  const filteredServices = services.filter(service => {
+    const categoryFilter = CATEGORY_MAP[selectedCategory];
+    const matchesCategory = !categoryFilter || service.category === categoryFilter;
     const matchesSearch = service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           service.description?.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesSearch;
+    return matchesCategory && matchesSearch;
   });
-
-  if (servicesQuery.isLoading) {
-    return (
-      <View style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color="#FF1493" />
-        <Text style={styles.loadingText}>Szolgáltatások betöltése...</Text>
-      </View>
-    );
-  }
-
-  if (servicesQuery.error) {
-    return (
-      <View style={[styles.container, styles.centered]}>
-        <Text style={styles.errorText}>Hiba történt a szolgáltatások betöltésekor</Text>
-        <TouchableOpacity 
-          style={styles.retryButton}
-          onPress={() => servicesQuery.refetch()}
-        >
-          <Text style={styles.retryButtonText}>Újrapróbálás</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
 
   const addToCart = (serviceId: string) => {
     setCartItems([...cartItems, serviceId]);
