@@ -224,7 +224,7 @@ export default function AdminScreen() {
           
           // Better web navigation handling
           try {
-            router.replace('/login');
+            router.replace('/login' as any);
             // Additional fallback for stubborn browsers
             setTimeout(() => {
               if (window.location.pathname !== '/login') {
@@ -255,7 +255,7 @@ export default function AdminScreen() {
               setIsLoading(true);
               try {
                 await logout();
-                router.replace('/login');
+                router.replace('/login' as any);
               } catch (error) {
                 console.error('Logout error:', error);
                 Alert.alert('Hiba', 'Hiba történt a kijelentkezés során!');
@@ -298,7 +298,7 @@ export default function AdminScreen() {
       <View style={styles.adminMenu}>
         <TouchableOpacity 
           style={styles.menuItem}
-          onPress={() => router.push('/service-management')}
+          onPress={() => router.push('/service-management' as any)}
         >
           <View style={styles.menuIconContainer}>
             <Wrench size={24} color="#8B4B6B" />
@@ -311,7 +311,7 @@ export default function AdminScreen() {
         
         <TouchableOpacity 
           style={styles.menuItem}
-          onPress={() => router.push('/reports')}
+          onPress={() => router.push('/reports' as any)}
         >
           <View style={styles.menuIconContainer}>
             <Settings size={24} color="#8B4B6B" />

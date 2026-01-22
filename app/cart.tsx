@@ -54,7 +54,7 @@ export default function CartScreen() {
       
       // Azonnal navigálunk a nyugtához
       router.push({
-        pathname: '/receipt',
+        pathname: '/receipt' as any,
         params: { paymentId: payment.id }
       });
     } catch (error) {

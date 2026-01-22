@@ -25,14 +25,14 @@ export default function WelcomeScreen() {
           <View style={styles.buttonContainer}>
             <TouchableOpacity 
               style={styles.button}
-              onPress={() => router.push('/(tabs)/dashboard')}
+              onPress={() => router.push('/(tabs)/dashboard' as any)}
             >
               <Text style={styles.buttonText}>Belépés</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
               style={[styles.button, styles.secondaryButton]}
-              onPress={() => router.push('/login')}
+              onPress={() => router.push('/login' as any)}
             >
               <Text style={styles.buttonText}>Admin bejelentkezés</Text>
             </TouchableOpacity>

@@ -102,7 +102,7 @@ export default function ServicesScreen() {
         </View>
         <TouchableOpacity 
           style={styles.cartButton}
-          onPress={() => router.push('/cart')}
+          onPress={() => router.push('/cart' as any)}
         >
           <ShoppingCart color="#fff" size={22} />
           {cartItems.length > 0 && (

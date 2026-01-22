@@ -265,7 +265,7 @@ export default function InventoryScreen() {
     }
 
     const quantity = parseInt(cameraQuantity);
-    router.push(`/barcode-scanner?action=${cameraAction}&quantity=${quantity}`);
+    router.push(`/barcode-scanner?action=${cameraAction}&quantity=${quantity}` as any);
     setCameraModalVisible(false);
   };
 

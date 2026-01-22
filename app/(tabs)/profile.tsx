@@ -29,13 +29,13 @@ export default function ProfileScreen() {
       id: '3',
       title: 'Beállítások',
       icon: Settings,
-      onPress: () => router.push('/settings'),
+      onPress: () => router.push('/settings' as any),
     },
     {
       id: '4',
       title: 'Admin Panel',
       icon: Shield,
-      onPress: () => router.push('/login'),
+      onPress: () => router.push('/login' as any),
     },
     {
       id: '5',

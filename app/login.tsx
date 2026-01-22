@@ -36,7 +36,7 @@ export default function LoginScreen() {
     // Simulate login
     setTimeout(() => {
       if (email === 'admin@salon.hu' && password === 'admin123') {
-        router.replace('/(tabs)/dashboard');
+        router.replace('/(tabs)/dashboard' as any);
       } else {
         setErrorMessage('Hibás email vagy jelszó!');
         setIsLoading(false);

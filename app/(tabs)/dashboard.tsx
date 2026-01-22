@@ -69,7 +69,7 @@ export default function DashboardScreen() {
       subtitle: 'Időpont rögzítése',
       icon: Calendar,
       color: '#FF1493',
-      onPress: () => router.push('/(tabs)/services'),
+      onPress: () => router.push('/(tabs)/services' as any),
     },
     {
       id: '2',
@@ -77,7 +77,7 @@ export default function DashboardScreen() {
       subtitle: 'Árak és kezelések',
       icon: Scissors,
       color: '#6366F1',
-      onPress: () => router.push('/(tabs)/services'),
+      onPress: () => router.push('/(tabs)/services' as any),
     },
     {
       id: '3',
@@ -85,7 +85,7 @@ export default function DashboardScreen() {
       subtitle: 'Vendég adatok',
       icon: Users,
       color: '#10B981',
-      onPress: () => router.push('/clients'),
+      onPress: () => router.push('/clients' as any),
     },
     {
       id: '4',
@@ -93,7 +93,7 @@ export default function DashboardScreen() {
       subtitle: 'Termékek kezelése',
       icon: Package,
       color: '#F59E0B',
-      onPress: () => router.push('/inventory'),
+      onPress: () => router.push('/inventory' as any),
     },
     {
       id: '5',
@@ -101,7 +101,7 @@ export default function DashboardScreen() {
       subtitle: 'Statisztikák',
       icon: Activity,
       color: '#EF4444',
-      onPress: () => router.push('/reports'),
+      onPress: () => router.push('/reports' as any),
     },
     {
       id: '6',
@@ -109,7 +109,7 @@ export default function DashboardScreen() {
       subtitle: 'Rendszer konfiguráció',
       icon: Settings,
       color: '#6B7280',
-      onPress: () => router.push('/settings'),
+      onPress: () => router.push('/settings' as any),
     },
   ];
 
